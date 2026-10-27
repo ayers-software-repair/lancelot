@@ -8,10 +8,11 @@
 import Conf from 'conf';
 import { createHash } from 'node:crypto';
 import { cpus, totalmem } from 'node:os';
+import type * as KeytarModule from 'keytar';
 import type { LoggerService } from './logger.js';
 import { MISC, CREDENTIALS_LOG_MESSAGES } from '../config/constants.js';
 
-type Keytar = typeof import('keytar');
+type Keytar = typeof KeytarModule;
 
 export type StorageBackend = typeof MISC.KEYTAR_BACKEND | typeof MISC.CONF_BACKEND;
 
