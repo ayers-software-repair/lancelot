@@ -8,6 +8,8 @@ export default defineConfig({
     lib: 'src/lib.ts',
     'bin/lancelot': 'src/bin/lancelot.ts',
     'bin/lancelot-init': 'src/bin/lancelot-init.ts',
+    'bin/lancelot-index': 'src/bin/lancelot-index.ts',
+    lambda: 'src/lambda.ts',
   },
   format: ['esm'],
   target: 'node20',

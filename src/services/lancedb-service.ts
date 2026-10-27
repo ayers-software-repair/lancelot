@@ -160,7 +160,7 @@ export class LanceDBService {
   private toResult(row: Row, textColumn?: string): SearchResult {
     const config = this.configService.getConfig().lancedb;
     const column = textColumn ?? config.textColumn;
-    const source = asString(row.chunkSource ?? row.docSource ?? 'unknown').replace(
+    const source = asString(row.chunkSource ?? row.docSource ?? row.path ?? 'unknown').replace(
       /^localfile:\/\//,
       '',
     );
@@ -175,6 +175,7 @@ export class LanceDBService {
       'source',
       'chunkSource',
       'docSource',
+      'path',
       '_distance',
       '_score',
     ]);
