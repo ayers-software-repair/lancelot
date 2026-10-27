@@ -1,0 +1,77 @@
+{
+  "name": "@ayersrepair/lancelot",
+  "version": "0.2.0",
+  "description": "An MCP server that answers search and retrieval queries against a local LanceDB database, with OpenAI embeddings when a key is present and text search otherwise.",
+  "type": "module",
+  "main": "./dist/lib.js",
+  "types": "./dist/lib.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/lib.d.ts",
+      "default": "./dist/lib.js"
+    }
+  },
+  "bin": {
+    "lancelot": "./dist/bin/lancelot.js",
+    "lancelot-init": "./dist/bin/lancelot-init.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src tests",
+    "format": "prettier --write src tests",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "lancedb",
+    "vector-search",
+    "rag",
+    "embeddings"
+  ],
+  "author": "Zachariah Ayers",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayers-software-repair/lancelot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ayers-software-repair/lancelot/issues"
+  },
+  "homepage": "https://github.com/ayers-software-repair/lancelot#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@lancedb/lancedb": "0.21.3",
+    "@modelcontextprotocol/sdk": "1.17.4",
+    "conf": "14.0.0",
+    "inquirer": "12.9.3",
+    "keytar": "7.9.0",
+    "openai": "5.15.0",
+    "winston": "3.17.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.32.0",
+    "@types/node": "24.3.0",
+    "eslint": "9.33.0",
+    "prettier": "3.6.2",
+    "tsup": "8.5.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.38.0",
+    "vitest": "3.2.4"
+  }
+}

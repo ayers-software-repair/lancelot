@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+npm-debug.log*
+.env
+.env.*
+.vitest/
+.DS_Store
+.claude/settings.local.json
+CLAUDE.local.md
+
+# A local config folder at the repository root only; src/config is source.
+/config/

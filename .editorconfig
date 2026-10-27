@@ -1,0 +1,49 @@
+# The house style. Copied byte-identical into every first-party repo.
+#
+# EditorConfig has no include mechanism: a repo's own copy is the file its editors read, so a copy
+# per repo is the only workable arrangement. A drift test in each consumer holds its copy byte-equal
+# to this one.
+#
+# This is the base layer. Every editor honours it with nothing installed, it spans every language in
+# the estate, and Prettier reads it and converts its properties to Prettier settings — so indentation
+# and line endings are stated here and never restated in a formatter config.
+
+root = true
+
+[*]
+charset = utf-8
+# lf, and never crlf. Prettier honours this setting, so declaring crlf on a tree written with lf
+# makes the first formatter run rewrite every line of every file while changing no content.
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{cs,csx}]
+indent_size = 4
+dotnet_sort_system_directives_first = true
+csharp_style_namespace_declarations = file_scoped:suggestion
+dotnet_style_qualification_for_field = false:suggestion
+
+[*.go]
+# gofmt indents with tabs and is the authority for Go; any other value here fights the toolchain.
+indent_style = tab
+
+[*.{js,mjs,cjs,ts,mts,cts}]
+indent_size = 2
+
+[*.{css,scss,html,svg,vue}]
+indent_size = 2
+
+[*.{csproj,props,targets,xml,plist}]
+indent_size = 2
+
+[*.{json,yml,yaml,toml}]
+indent_size = 2
+
+[*.md]
+# Two trailing spaces is a hard line break in Markdown; trimming them reflows the text.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
