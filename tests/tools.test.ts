@@ -211,10 +211,10 @@ describe('lancedb_query', () => {
     const { context } = fakes({ vector: [hit(big), hit(big), hit(big)] });
     const result = await registry(context).executeTool('lancedb_query', {
       question: 'q',
-      contextBudget: 700,
+      contextBudget: 1000,
     });
     const text = (result.content[0] as { text: string }).text;
-    expect(text.match(/```\n/g)?.length).toBe(2);
+    expect(text.match(/^### /gm)?.length).toBe(2);
     expect(text).toMatch(/more chunks left out/);
   });
 
