@@ -28,7 +28,7 @@ export class VersionTool extends BaseTool<typeof versionArgs> {
           lancelot: {
             name: MISC.PACKAGE_NAME,
             version: config.version,
-            transport: 'stdio',
+            transport: config.transport ?? 'stdio',
             protocolVersion: LATEST_PROTOCOL_VERSION,
           },
           capabilities: {

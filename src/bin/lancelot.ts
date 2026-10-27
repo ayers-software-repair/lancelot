@@ -1,66 +1,53 @@
 #!/usr/bin/env node
 // Copyright Ayers Electronics Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { createServer as createNodeServer } from 'node:http';
+import { parseCli } from '../core/cli.js';
+import { createHttpHandler } from '../core/http.js';
+import { createRuntime, redirectConsoleToStderr } from '../core/runtime.js';
 import { LancelotServer } from '../core/server.js';
-import type { ToolContext } from '../core/tool-base.js';
-import { ConfigurationService } from '../services/config.js';
-import { CredentialService } from '../services/credentials.js';
-import { EmbeddingsService } from '../services/embeddings-service.js';
-import { LanceDBService } from '../services/lancedb-service.js';
-import { LoggerService } from '../services/logger.js';
+import { HTTP_DEFAULTS } from '../config/constants.js';
 
-// stdout is the MCP channel. Anything that prints through console.log would corrupt it,
-// so every console method that writes to stdout writes to stderr instead.
-/* eslint-disable no-console */
-console.log = console.error;
-console.info = console.error;
-console.debug = console.error;
-/* eslint-enable no-console */
-
-function readVersion(): string {
-  const url = new URL('../../package.json', import.meta.url);
-  return (JSON.parse(readFileSync(fileURLToPath(url), 'utf-8')) as { version: string }).version;
-}
+// stdout is the MCP channel on stdio. Anything that prints through console.log would corrupt it.
+redirectConsoleToStderr();
 
 async function main(): Promise<void> {
-  const logger = new LoggerService();
-  const credentialService = new CredentialService(logger);
-  const configService = new ConfigurationService(credentialService, logger);
-  configService.initialize();
-
-  const embeddings = new EmbeddingsService(configService, logger);
-  await embeddings.initialize();
-
-  const lancedb = new LanceDBService(configService, logger);
-  if (configService.getConfig().lancedb.path) {
-    try {
-      await lancedb.initialize();
-    } catch (error) {
-      logger.warn('Could not open the LanceDB database. The tools report errors until it can.', {
-        error,
-      });
-    }
-  }
-
-  const context: ToolContext = {
-    config: { version: readVersion() },
-    logger,
-    configService,
-    lancedb,
-    embeddings,
-  };
+  const { http } = parseCli(process.argv.slice(2));
+  const { context, lancedb, logger } = await createRuntime({
+    packageJson: new URL('../../package.json', import.meta.url),
+    transport: http ? 'http' : 'stdio',
+  });
   const server = new LancelotServer(context);
-  await server.start();
 
   const shutdown = (): void => {
     void lancedb.close().then(() => process.exit(0));
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
-  // The client closes stdin to ask for shutdown.
-  process.stdin.on('end', shutdown);
+
+  if (!http) {
+    await server.start();
+    // The client closes stdin to ask for shutdown.
+    process.stdin.on('end', shutdown);
+    return;
+  }
+
+  const handler = createHttpHandler({
+    createServer: () => server.newServer(),
+    allowedOrigins: http.allowedOrigins,
+    allowedHosts: http.allowedHosts,
+    path: HTTP_DEFAULTS.PATH,
+    logger,
+  });
+  if (http.allowedHosts.length === 0) {
+    logger.warn('No allowed hosts are set, so the Host header is not checked.');
+  }
+  createNodeServer((req, res) => void handler(req, res)).listen(http.port, http.host, () => {
+    logger.info('Lancelot listening', {
+      url: `http://${http.host}:${http.port}${HTTP_DEFAULTS.PATH}`,
+      version: context.config.version,
+    });
+  });
 }
 
 main().catch((error: unknown) => {

@@ -60,3 +60,29 @@ export const CREDENTIALS_LOG_MESSAGES = {
   KEYTAR_LOADED: 'Credential store: keytar loaded',
   KEYTAR_NOT_AVAILABLE: 'Credential store: keytar not available, using encrypted config file',
 } as const;
+
+/** The HTTP transport: the local server (`--http`) and the Lambda handler. */
+export const HTTP_DEFAULTS = {
+  PORT: 3000,
+  /** Loopback only. The spec says a local server should not bind all interfaces. */
+  HOST: '127.0.0.1',
+  /** The MCP endpoint path of the local server. */
+  PATH: '/mcp',
+  /** Largest request body, in bytes. Every Lancelot request is a few hundred bytes. */
+  MAX_BODY_BYTES: 64 * 1024,
+} as const;
+
+/** Environment variables of the HTTP transport. Lists are comma separated. */
+export const HTTP_ENV = {
+  ALLOWED_ORIGINS: 'LANCELOT_ALLOWED_ORIGINS',
+  ALLOWED_HOSTS: 'LANCELOT_ALLOWED_HOSTS',
+  /** Lambda only: the path the endpoint is served under, such as /mcp/lancelot. */
+  BASE_PATH: 'LANCELOT_BASE_PATH',
+} as const;
+
+/** What lancelot-index reads and writes. */
+export const INDEX_DEFAULTS = {
+  /** Characters per chunk. A chunk ends at a paragraph boundary at or before this. */
+  CHUNK_SIZE: 1200,
+  EXTENSIONS: ['.md', '.txt', '.html'],
+} as const;

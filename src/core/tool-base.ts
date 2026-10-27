@@ -11,7 +11,7 @@ import { ERROR_MESSAGES } from '../config/constants.js';
 
 /** What a tool may use. Every service is optional so a tool can be built in a test. */
 export interface ToolContext {
-  config: { version: string };
+  config: { version: string; transport?: 'stdio' | 'http' };
   logger?: LoggerService;
   configService?: ConfigurationService;
   lancedb?: LanceDBService;
