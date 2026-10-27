@@ -24,7 +24,7 @@ HTTP, no other transport.
   in source files.
 - The company name "Ayers Software Repair" appears on no package metadata.
 - The GitHub organization handle appears in `package.json` only on `repository.url`,
-  `bugs.url` and `homepage`.
+  `bugs.url`, `homepage` and `mcpName` (the MCP Registry requires `io.github.<organization>/<server>`).
 - None of the legacy names and no personal mail address anywhere in the tree. The exact pattern
   lives in `scripts/identity-gate.sh` and is not repeated here, because a check that finds prose
   finds itself.

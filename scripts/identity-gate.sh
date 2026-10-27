@@ -9,7 +9,8 @@
 #      Ayers Electronics; the copyright holder is Ayers Electronics Inc.
 #   3. The author law: author credit is the root package.json alone.
 #   4. The organization law: the GitHub organization's handle appears in a package.json only on
-#      the repository url, the bugs url and the homepage.
+#      the repository url, the bugs url, the homepage and mcpName (the MCP Registry requires
+#      mcpName to be io.github.<organization>/<server>).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -47,8 +48,8 @@ scan() {
       echo "identity gate: author law violated in $manifest (credit is the root package.json alone)" >&2
       fail=1
     fi
-    if grep -n "$ORGANIZATION" "$manifest" | grep -vE '"(url|bugs|homepage)"'; then
-      echo "identity gate: organization law violated in $manifest (the handle belongs on the repository url, bugs url and homepage only)" >&2
+    if grep -n "$ORGANIZATION" "$manifest" | grep -vE '"(url|bugs|homepage|mcpName)"'; then
+      echo "identity gate: organization law violated in $manifest (the handle belongs on the repository url, bugs url, homepage and mcpName only)" >&2
       fail=1
     fi
   done < <(printf '%s\n' "$files" | grep -E '(^|/)package\.json$' || true)
@@ -83,6 +84,21 @@ if [ "${1:-}" = "--self-test" ]; then
       echo "identity gate self-test FAILED: the $law rule never fired" >&2
       exit 1
     }
+  done
+  # The handle is allowed in mcpName and still refused in description or author.
+  mkdir "$tmp/ok" "$tmp/badd" "$tmp/bada"
+  printf '{\n  "name": "x",\n  "mcpName": "io.github.ayers-software-repair/x"\n}\n' > "$tmp/ok/package.json"
+  printf '{\n  "name": "x",\n  "description": "ayers-software-repair"\n}\n' > "$tmp/badd/package.json"
+  printf '{\n  "name": "x",\n  "author": "ayers-software-repair"\n}\n' > "$tmp/bada/package.json"
+  if ! printf '%s\n' "$tmp/ok/package.json" | scan >/dev/null 2>&1; then
+    echo "identity gate self-test FAILED: the handle in mcpName was refused" >&2
+    exit 1
+  fi
+  for bad in badd bada; do
+    if printf '%s\n' "$tmp/$bad/package.json" | scan >/dev/null 2>&1; then
+      echo "identity gate self-test FAILED: the handle in $bad passed" >&2
+      exit 1
+    fi
   done
   if printf '' | scan 2>/dev/null; then
     echo "identity gate self-test FAILED: an empty file list passed" >&2
