@@ -51,7 +51,7 @@ function envPositiveInt(name: string): number | undefined {
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
-function definedOnly<T extends object>(values: { [K in keyof T]: T[K] | undefined }): Partial<T> {
+function definedOnly<T extends object>(values: { [K in keyof T]?: T[K] | undefined }): Partial<T> {
   return Object.fromEntries(
     Object.entries(values).filter(([, value]) => value !== undefined),
   ) as Partial<T>;

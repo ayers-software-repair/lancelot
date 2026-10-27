@@ -50,8 +50,11 @@ describe('logger', () => {
     expect(transports.length).toBeGreaterThan(0);
     for (const transport of transports) {
       expect(transport).toBeInstanceOf(winston.transports.Console);
-      const levels = (transport as unknown as { stderrLevels: Record<string, boolean> }).stderrLevels;
-      expect(Object.keys(levels).sort()).toEqual([...LOG_LEVELS].sort());
+      // winston types this as string[]; at run time it is a set stored as an object.
+      const raw = (transport as unknown as { stderrLevels: string[] | Record<string, boolean> })
+        .stderrLevels;
+      const levels = Array.isArray(raw) ? raw : Object.keys(raw);
+      expect([...levels].sort()).toEqual([...LOG_LEVELS].sort());
     }
   });
 

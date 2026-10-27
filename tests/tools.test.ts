@@ -26,7 +26,7 @@ function fakes(options: { vector?: SearchResult[]; vectorFails?: boolean; embedd
   });
   const textSearch = vi.fn(async () => [hit('from text')]);
   const embedding = options.embedding === undefined ? [0.1, 0.2] : options.embedding;
-  const generateEmbedding = vi.fn(async (_text: string) => embedding);
+  const generateEmbedding = vi.fn(async () => embedding);
   const context = {
     lancedb: { vectorSearch, textSearch },
     embeddings: { isAvailable: () => embedding !== null, generateEmbedding },
