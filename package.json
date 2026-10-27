@@ -1,7 +1,8 @@
 {
   "name": "@ayersrepair/lancelot",
   "version": "0.2.0",
-  "description": "An MCP server that answers search and retrieval queries against a local LanceDB database, with OpenAI embeddings when a key is present and text search otherwise.",
+  "mcpName": "io.github.ayers-software-repair/lancelot",
+  "description": "An MCP server for search and retrieval over a local LanceDB database",
   "type": "module",
   "main": "./dist/lib.js",
   "types": "./dist/lib.d.ts",

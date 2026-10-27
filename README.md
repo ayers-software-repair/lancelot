@@ -96,6 +96,22 @@ Other MCP clients take the same command in their `mcpServers` configuration:
 }
 ```
 
+### Install links
+
+Open one of these in a browser or on the command line to add the server to the editor. Set
+`LANCEDB_PATH` to your database folder afterwards.
+
+- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayersrepair%2Flancelot%400.2.0%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
+- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc3JlcGFpci9sYW5jZWxvdEAwLjIuMCJdLCJlbnYiOnsiTEFOQ0VEQl9QQVRIIjoiL3BhdGgvdG8vZGIifX0=`
+
+The link formats are from the
+[VS Code MCP guide](https://code.visualstudio.com/api/extension-guides/ai/mcp#create-an-mcp-installation-url)
+and the [Cursor install links documentation](https://cursor.com/docs/mcp/install-links.md).
+
+### Registry
+
+Listed in the official MCP Registry as `io.github.ayers-software-repair/lancelot` once published.
+
 ### Setup command
 
 `lancelot-init` asks for the database folder and an OpenAI API key, and stores them for later runs.
@@ -146,6 +162,11 @@ wrong. `tests/readonly.test.ts` scans the source for those calls.
 
 Lancelot keeps its own settings and credentials in the per-user configuration directory, never in
 the database folder.
+
+## Privacy
+
+When `OPENAI_API_KEY` is set, query text is sent to OpenAI to compute embeddings. With no key
+nothing leaves the machine.
 
 ## Development
 

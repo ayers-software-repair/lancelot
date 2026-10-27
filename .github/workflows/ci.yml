@@ -49,6 +49,21 @@ jobs:
       - name: Check
         run: npm run check
 
+      - name: Registry metadata matches the package
+        run: |
+          node -e '
+          const fs = require("node:fs");
+          const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          const s = JSON.parse(fs.readFileSync("server.json", "utf8"));
+          const pkg = (s.packages || [])[0] || {};
+          const bad = [];
+          if (s.version !== p.version) bad.push("server.json version " + s.version + " != package.json " + p.version);
+          if (pkg.identifier !== p.name) bad.push("package identifier " + pkg.identifier + " != name " + p.name);
+          if (pkg.version !== p.version) bad.push("package version " + pkg.version + " != " + p.version);
+          if (p.mcpName !== s.name) bad.push("mcpName " + p.mcpName + " != server.json name " + s.name);
+          if (bad.length) { console.error(bad.join("\n")); process.exit(1); }
+          '
+
       # The tarball lists dist, README.md, LICENSE and NOTICE (plus package.json), and no more.
       - name: Pack (dry run)
         run: npm pack --dry-run

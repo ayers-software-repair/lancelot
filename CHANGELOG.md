@@ -9,6 +9,8 @@ A clean-room release under the new name and owner.
 
 ### Added
 
+- Registry metadata: `mcpName` in `package.json`, `server.json` for the official MCP Registry and
+  `glama.json`, with install links for VS Code and Cursor in the README.
 - Tests for the constants, the tool registry and tool input schemas, the logger and server
   output, the API key and settings, and the read-only rule.
 - CI on Node 20 and 24: install, identity gate, header check, typecheck, lint, tests, build and a

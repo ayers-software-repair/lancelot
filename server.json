@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ayers-software-repair/lancelot",
+  "description": "An MCP server for search and retrieval over a local LanceDB database",
+  "title": "Lancelot",
+  "version": "0.2.0",
+  "websiteUrl": "https://ayers.repair/marketplace.html",
+  "repository": {
+    "url": "https://github.com/ayers-software-repair/lancelot",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@ayersrepair/lancelot",
+      "version": "0.2.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "LANCEDB_PATH",
+          "description": "Folder that holds the LanceDB database. It must exist; Lancelot only reads it.",
+          "isRequired": true
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "description": "Enables vector search by sending query text to OpenAI to compute embeddings. Without it, search is text only and nothing leaves the machine.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
