@@ -1,6 +1,6 @@
 {
   "name": "@ayersrepair/lancelot",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "mcpName": "io.github.ayers-software-repair/lancelot",
   "description": "An MCP server for search and retrieval over a local LanceDB database",
   "type": "module",
@@ -14,7 +14,8 @@
   },
   "bin": {
     "lancelot": "./dist/bin/lancelot.js",
-    "lancelot-init": "./dist/bin/lancelot-init.js"
+    "lancelot-init": "./dist/bin/lancelot-init.js",
+    "lancelot-index": "./dist/bin/lancelot-index.js"
   },
   "files": [
     "dist",

@@ -4,7 +4,12 @@ Lancelot is an MCP server that answers search and retrieval queries against a lo
 database. It uses OpenAI embeddings for vector search when an API key is set, and plain text
 matching when it is not.
 
-It reads the database folder and never writes to it. It speaks MCP over stdio only.
+It reads the database folder and never writes to it. It speaks MCP over stdio, and over
+Streamable HTTP with `--http` (see [HTTP mode](#http-mode)).
+
+The public read-only instance over the Ayers documentation is at `https://ayers.repair/mcp/lancelot`.
+Any MCP client that supports Streamable HTTP can use that URL. The documents are built into a
+table with [`lancelot-index`](#index-your-documents).
 
 ## Tools
 
@@ -61,8 +66,8 @@ No parameters.
 ### Table layout
 
 Lancelot reads the text from the text column (`text` by default). It reads `title` for the title,
-and `chunkSource` or `docSource` for the source, when a row has them; this is the layout AnythingLLM
-writes. Other columns come back as `metadata`. Vector search needs vectors made with the same model
+and `chunkSource`, `docSource` or `path` for the source, when a row has them; the first two are the
+layout AnythingLLM writes, and `path` is what `lancelot-index` writes. Other columns come back as `metadata`. Vector search needs vectors made with the same model
 as `EMBEDDING_MODEL`.
 
 ## Install
@@ -101,8 +106,8 @@ Other MCP clients take the same command in their `mcpServers` configuration:
 Open one of these in a browser or on the command line to add the server to the editor. Set
 `LANCEDB_PATH` to your database folder afterwards.
 
-- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayersrepair%2Flancelot%400.2.0%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
-- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc3JlcGFpci9sYW5jZWxvdEAwLjIuMCJdLCJlbnYiOnsiTEFOQ0VEQl9QQVRIIjoiL3BhdGgvdG8vZGIifX0=`
+- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayersrepair%2Flancelot%400.3.0%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
+- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc3JlcGFpci9sYW5jZWxvdEAwLjMuMCJdLCJlbnYiOnsiTEFOQ0VEQl9QQVRIIjoiL3BhdGgvdG8vZGIifX0=`
 
 The link formats are from the
 [VS Code MCP guide](https://code.visualstudio.com/api/extension-guides/ai/mcp#create-an-mcp-installation-url)
@@ -118,6 +123,79 @@ Listed in the official MCP Registry as `io.github.ayers-software-repair/lancelot
 The key goes to the operating system keychain through keytar, or to an encrypted file when keytar
 is not available. Run it with `npx -p @ayersrepair/lancelot lancelot-init`. Environment variables
 override what it stored.
+
+## HTTP mode
+
+```bash
+npx -y @ayersrepair/lancelot --http                      # http://127.0.0.1:3000/mcp
+npx -y @ayersrepair/lancelot --http 8080
+npx -y @ayersrepair/lancelot --http 8080 --host 0.0.0.0  # all interfaces
+```
+
+Without `--http` the server is stdio, exactly as before. With it, the server speaks the
+[Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
+of MCP 2025-06-18, the protocol version of the SDK Lancelot is built on. `--http` takes an optional
+port (default 3000). The server binds `127.0.0.1` unless `--host` names another address, as the
+specification advises for a local server. The endpoint is `/mcp`; any other path is 404.
+
+- **Origin.** The specification says the server must validate the `Origin` header. A request that
+  carries an `Origin` not listed in `LANCELOT_ALLOWED_ORIGINS` gets 403. With the variable unset,
+  every request that carries an `Origin` gets 403. A request with no `Origin` header is not from a
+  browser and is let through; the SDK's own origin check refuses those, so Lancelot does the check
+  itself.
+- **Host.** `LANCELOT_ALLOWED_HOSTS` lists the `Host` header values that may call, for DNS
+  rebinding protection. Left unset on a loopback bind, it defaults to `127.0.0.1:<port>`,
+  `localhost:<port>` and `[::1]:<port>`. Left unset with `--host 0.0.0.0`, the Host header is not
+  checked and a warning goes to stderr. A request with a Host not listed gets 403.
+- **Stateless.** No session id is issued. Each POST gets its own MCP server and transport, closed
+  when the response ends, and answers with one JSON object. `GET` (the optional event stream) and
+  `DELETE` (ending a session) answer 405 with `Allow: POST`, which the specification permits.
+- **Limits.** A body over 64 KB is 413. A body that is not JSON is 400.
+- **Protocol version.** The `MCP-Protocol-Version` header is checked by the SDK: a version it does
+  not support is 400, and a missing header is taken as 2025-03-26, as the specification says.
+
+Both variables take comma-separated lists, for example
+`LANCELOT_ALLOWED_ORIGINS=https://app.example,https://other.example`. HTTP mode has no
+authentication; the tools are read-only, and a server open to a network should sit behind
+something that has it.
+
+### AWS Lambda
+
+`dist/lambda.js` exports `handler(event)` for an API Gateway HTTP API with
+[payload format 2.0](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html).
+It turns the event into the request the SDK's transport expects and returns
+`{ statusCode, headers, body }`. It reads `LANCEDB_PATH`, `LANCELOT_BASE_PATH` (the path the
+endpoint is served under, such as `/mcp/lancelot`; unset serves every path) and the two allow-list
+variables. The database connection is opened on the first invocation and reused on warm ones. The
+function may write only to `/tmp`, where Lancelot keeps its own settings file.
+
+The `Dockerfile` builds the
+[container image](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-image.html) on the AWS
+Node.js 24 base image for arm64, with the handler `dist/lambda.handler`. Build `dist` first:
+
+```bash
+docker buildx build --platform linux/arm64 --provenance=false -t lancelot-lambda .
+```
+
+## Index your documents
+
+`lancelot-index` builds the table the server reads from a folder of `.md`, `.txt` and `.html`
+files:
+
+```bash
+npx -p @ayersrepair/lancelot lancelot-index ./docs ./db
+npx -p @ayersrepair/lancelot lancelot-index ./docs ./db --table documents
+```
+
+It walks the folder and its subfolders (skipping names that start with a dot), strips HTML to
+text, and splits each file into chunks of about 1,200 characters on paragraph boundaries. A
+paragraph longer than that is cut at a space. Each chunk becomes a row `{ id, path, title, text }`:
+`id` is the relative path and chunk number, `path` is the relative path, and `title` is the first
+Markdown heading of the file, or the file name. There are no vectors, so search is text search.
+
+`--table` names the table (default `documents`). The command replaces that table if it exists, so
+running it again rebuilds the table from the folder. It is the only part of the package that writes
+to a database; the server never does. Point `LANCEDB_PATH` at the database folder afterwards.
 
 ## Environment variables
 
@@ -138,6 +216,9 @@ OpenAI client is created, search is text only, and nothing is logged as an error
 | `EMBEDDING_MODEL` | `text-embedding-ada-002` | The OpenAI model used to embed queries. |
 | `EMBEDDING_DIMENSIONS` | `1536` | Reported by `lancedb_status`. It is not sent to OpenAI. |
 | `LANCELOT_LOG_LEVEL` | `info` | One of `error`, `warn`, `info`, `http`, `verbose`, `debug`, `silly`. |
+| `LANCELOT_ALLOWED_ORIGINS` | none | HTTP mode: comma-separated `Origin` values that may call. See [HTTP mode](#http-mode). |
+| `LANCELOT_ALLOWED_HOSTS` | loopback names on the port | HTTP mode: comma-separated `Host` header values that may call. |
+| `LANCELOT_BASE_PATH` | any path | Lambda only: the path the endpoint is served under, such as `/mcp/lancelot`. |
 
 ## Standard output
 
@@ -151,14 +232,18 @@ Lancelot follows that:
   a library that prints does not corrupt the stream.
 - The server reads stdin until the client closes it, then exits.
 
-`lancelot-init` is the one command that writes to stdout. It talks to a person at a terminal and
-is never started as a server.
+HTTP mode keeps the same rule: it writes nothing to stdout either.
+
+`lancelot-init` and `lancelot-index` write to stdout. They talk to a person at a terminal and
+are never started as a server.
 
 ## Read-only
 
-The four tools open a table and query it. No code in `src` creates a table, adds, updates or
+The four tools open a table and query it. No code the server runs creates a table, adds, updates or
 deletes rows, or builds an index, and the server does not create the database folder if the path is
-wrong. `tests/readonly.test.ts` scans the source for those calls.
+wrong. The one exception in `src` is `src/bin/lancelot-index.ts`, a separate command that builds a
+table (see [Index your documents](#index-your-documents)); the server never imports it.
+`tests/readonly.test.ts` scans the rest of the source for those calls.
 
 Lancelot keeps its own settings and credentials in the per-user configuration directory, never in
 the database folder.

@@ -3,6 +3,27 @@
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 follows [Semantic Versioning](https://semver.org/).
 
+## 0.3.0
+
+### Added
+
+- HTTP mode: `lancelot --http [port]` serves the Streamable HTTP transport of MCP 2025-06-18,
+  stateless, at `/mcp`, bound to 127.0.0.1 unless `--host` says otherwise. `LANCELOT_ALLOWED_ORIGINS`
+  and `LANCELOT_ALLOWED_HOSTS` set the Origin and Host allow lists. A foreign Origin is 403, GET
+  and DELETE are 405, a body over 64 KB is 413. Without `--http` the server is stdio as before.
+- `dist/lambda.js` exports `handler(event)` for an API Gateway HTTP API (payload format 2.0), with
+  `LANCELOT_BASE_PATH` for the path it is served under, and a `Dockerfile` for the Lambda Node.js 24
+  arm64 base image. CI builds the image.
+- `lancelot-index <folder> <dbPath> [--table documents]`: builds the table the server reads from
+  `.md`, `.txt` and `.html` files, in chunks of about 1,200 characters.
+- `createServer` and `createHttpHandler` are exported from the package.
+
+### Changed
+
+- `lancedb_version` reports the transport it is running on, `stdio` or `http`.
+- A row's `path` column is read as its source when it has no `chunkSource` or `docSource`.
+- `tests/readonly.test.ts` allows writes in `src/bin/lancelot-index.ts` only.
+
 ## 0.2.0
 
 A clean-room release under the new name and owner.
