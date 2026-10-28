@@ -26,6 +26,8 @@ jobs:
       TAG: ${{ inputs.tag || github.ref_name }}
       # Pinned as in the registry's GitHub Actions page; raise it deliberately.
       MCP_PUBLISHER_VERSION: v1.8.1
+      # Secrets are not allowed in a step `if`; gate on this boolean.
+      DISPATCH: ${{ secrets.SITE_DISPATCH_TOKEN != '' }}
     steps:
       - name: Checkout at the tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -103,3 +105,16 @@ jobs:
           done
           echo "::error::registry search for ${name} does not show version ${version}"
           exit 1
+
+      - name: Redeploy the hosted endpoint
+        if: ${{ env.DISPATCH == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          gh api repos/ayers-software-repair/ayers.repair/dispatches \
+            -f event_type=mcp-release -f "client_payload[ref]=${TAG}"
+          echo "dispatched mcp-release for ${TAG}"
+
+      - name: Redeploy skipped
+        if: ${{ env.DISPATCH != 'true' }}
+        run: echo "SITE_DISPATCH_TOKEN is not set; the hosted endpoint was not redeployed"
