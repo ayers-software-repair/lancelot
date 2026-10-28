@@ -12,7 +12,7 @@ other transport. `lancelot-index` builds the table the server reads.
 ## Commands
 
     npm ci
-    npm run check                         # typecheck, lint, test, build: what CI runs
+    npm run check                         # typecheck, lint, build, test: what CI runs
     bash scripts/identity-gate.sh         # identity rules
     bash scripts/identity-gate.sh --self-test
     node scripts/check-headers.mjs        # source headers

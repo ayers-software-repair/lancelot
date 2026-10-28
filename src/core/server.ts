@@ -20,7 +20,6 @@ export function createServer(context: ToolContext, registry: ToolRegistry): Serv
   const server = new Server(
     {
       name: MISC.SERVICE_NAME,
-      vendor: MISC.VENDOR_NAME,
       version: context.config.version || MISC.DEFAULT_VERSION,
     },
     { capabilities: { tools: {} } },

@@ -120,6 +120,7 @@ function toRequest(event: ApiGatewayV2Event): IncomingMessage {
     method: event.requestContext.http.method,
     url: `${event.rawPath}${query}`,
     headers,
+    rawHeaders: Object.entries(headers).flat(),
   }) as unknown as IncomingMessage;
 }
 

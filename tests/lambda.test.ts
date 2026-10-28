@@ -89,7 +89,4 @@ describe('lambda shim', () => {
     expect((await invoke(event())).statusCode).toBe(400);
   });
 
-  it.todo(
-    'the exported handler opens LanceDB at LANCEDB_PATH once and reuses it on a warm invocation (needs LanceDB)',
-  );
 });

@@ -3,6 +3,22 @@
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- Update MCP SDK to 1.32.2, Zod to 4.6.7 and OpenAI SDK to 6.49.0 to remove the reported production dependency advisories.
+- Supply raw request headers in the Lambda adapter for the updated MCP HTTP transport.
+- Remove the unsupported custom vendor field from MCP initialization; publisher metadata remains in the version tool and package.
+
+### Changed
+
+- Replace six integration TODOs with real indexing, text retrieval, escaped-filter, read-only, stdio and cold/warm Lambda checks.
+- Test the real OpenAI SDK against local HTTP fixtures, including unavailable embeddings and error responses.
+- Build before tests and run test workers sequentially to bound native-database resource use.
+- Put installation and indexing before the API reference in the npm README and clarify query data handling.
+- Declare the existing public hosted endpoint in MCP Registry remote metadata.
+
 ## 0.3.1
 
 ### Changed

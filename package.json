@@ -26,11 +26,12 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=1",
     "lint": "eslint src tests",
     "format": "prettier --write src tests",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "prepublishOnly": "npm run check"
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "prepublishOnly": "npm run check",
+    "pretest": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -58,13 +59,13 @@
   },
   "dependencies": {
     "@lancedb/lancedb": "0.21.3",
-    "@modelcontextprotocol/sdk": "1.17.4",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "conf": "14.0.0",
     "inquirer": "12.9.3",
     "keytar": "7.9.0",
-    "openai": "5.15.0",
+    "openai": "6.49.0",
     "winston": "3.17.0",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "9.32.0",
