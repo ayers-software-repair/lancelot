@@ -7,7 +7,7 @@ matching when it is not.
 It reads the database folder and never writes to it. It speaks MCP over stdio, and over
 Streamable HTTP with `--http` (see [HTTP mode](#http-mode)).
 
-The public read-only instance over the Ayers documentation is at `https://ayers.repair/mcp/lancelot`.
+The public read-only instance over the Ayers documentation is at `https://mcp.ayers.repair/lancelot`.
 Any MCP client that supports Streamable HTTP can use that URL. The documents are built into a
 table with [`lancelot-index`](#index-your-documents).
 
@@ -252,6 +252,10 @@ the database folder.
 
 When `OPENAI_API_KEY` is set, query text is sent to OpenAI to compute embeddings. With no key
 nothing leaves the machine.
+
+[Privacy policy](https://ayers.repair/legal/lancelot/privacy.html) and
+[terms](https://ayers.repair/legal/lancelot/terms.html): the full statement, including what the
+hosted endpoint receives.
 
 ## Development
 
