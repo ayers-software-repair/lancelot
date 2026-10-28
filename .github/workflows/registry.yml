@@ -1,0 +1,105 @@
+name: registry
+
+# Publishes server.json to the official MCP Registry with GitHub OIDC (no secret).
+# The npm package for the tag must already exist; the owner publishes npm first.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish, for example v0.3.0'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      # Pinned as in the registry's GitHub Actions page; raise it deliberately.
+      MCP_PUBLISHER_VERSION: v1.8.1
+    steps:
+      - name: Checkout at the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          persist-credentials: false
+
+      - name: Tag matches server.json and package.json
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          sv="$(jq -r .version server.json)"
+          pv="$(jq -r .version package.json)"
+          spv="$(jq -r '.packages[0].version' server.json)"
+          if [ "$version" != "$sv" ] || [ "$version" != "$pv" ] || [ "$version" != "$spv" ]; then
+            echo "::error::tag $TAG, server.json $sv (package entry $spv), package.json $pv must all agree"
+            exit 1
+          fi
+
+      - name: npm package is published and names this server
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          want="$(jq -r .name server.json)"
+          if ! out="$(npm view "@ayersrepair/lancelot@${version}" name mcpName --json)"; then
+            echo "::error::@ayersrepair/lancelot@${version} is not on npm yet. Run npm publish --access public first, then re-run this workflow."
+            exit 1
+          fi
+          got="$(printf '%s' "$out" | jq -r .mcpName)"
+          if [ "$got" != "$want" ]; then
+            echo "::error::npm mcpName is '$got', server.json name is '$want'"
+            exit 1
+          fi
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and verify mcp-publisher
+        run: |
+          set -euo pipefail
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          archive="mcp-publisher_${os}_${arch}.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+
+      - name: Authenticate to the MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json
+        run: ./mcp-publisher publish
+
+      - name: Registry lists this version
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          name="$(jq -r .name server.json)"
+          for i in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error --get \
+                 --data-urlencode "search=${name}" \
+                 "https://registry.modelcontextprotocol.io/v0.1/servers" \
+               | jq -e --arg v "$version" '[.. | .version? | strings] | index($v) != null' >/dev/null; then
+              echo "registry lists ${name} ${version}"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::registry search for ${name} does not show version ${version}"
+          exit 1
