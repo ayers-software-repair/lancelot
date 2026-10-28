@@ -76,7 +76,7 @@ export const HTTP_DEFAULTS = {
 export const HTTP_ENV = {
   ALLOWED_ORIGINS: 'LANCELOT_ALLOWED_ORIGINS',
   ALLOWED_HOSTS: 'LANCELOT_ALLOWED_HOSTS',
-  /** Lambda only: the path the endpoint is served under, such as /mcp/lancelot. */
+  /** Lambda only: the path the endpoint is served under, such as /lancelot. */
   BASE_PATH: 'LANCELOT_BASE_PATH',
 } as const;
 

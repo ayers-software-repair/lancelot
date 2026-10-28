@@ -165,7 +165,7 @@ something that has it.
 [payload format 2.0](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html).
 It turns the event into the request the SDK's transport expects and returns
 `{ statusCode, headers, body }`. It reads `LANCEDB_PATH`, `LANCELOT_BASE_PATH` (the path the
-endpoint is served under, such as `/mcp/lancelot`; unset serves every path) and the two allow-list
+endpoint is served under, such as `/lancelot`; unset serves every path) and the two allow-list
 variables. The database connection is opened on the first invocation and reused on warm ones. The
 function may write only to `/tmp`, where Lancelot keeps its own settings file.
 
@@ -218,7 +218,7 @@ OpenAI client is created, search is text only, and nothing is logged as an error
 | `LANCELOT_LOG_LEVEL` | `info` | One of `error`, `warn`, `info`, `http`, `verbose`, `debug`, `silly`. |
 | `LANCELOT_ALLOWED_ORIGINS` | none | HTTP mode: comma-separated `Origin` values that may call. See [HTTP mode](#http-mode). |
 | `LANCELOT_ALLOWED_HOSTS` | loopback names on the port | HTTP mode: comma-separated `Host` header values that may call. |
-| `LANCELOT_BASE_PATH` | any path | Lambda only: the path the endpoint is served under, such as `/mcp/lancelot`. |
+| `LANCELOT_BASE_PATH` | any path | Lambda only: the path the endpoint is served under, such as `/lancelot`. |
 
 ## Standard output
 

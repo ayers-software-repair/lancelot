@@ -12,7 +12,7 @@
  *
  * The SDK's transport wants Node's request and response, so the event is turned into a small
  * stand-in for each. Settings come from the environment: LANCEDB_PATH, LANCELOT_BASE_PATH (the
- * path the endpoint is served under, such as /mcp/lancelot), LANCELOT_ALLOWED_ORIGINS and
+ * path the endpoint is served under, such as /lancelot), LANCELOT_ALLOWED_ORIGINS and
  * LANCELOT_ALLOWED_HOSTS. The database connection is opened once and kept across warm invocations.
  */
 import { EventEmitter } from 'node:events';
