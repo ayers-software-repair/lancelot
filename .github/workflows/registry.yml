@@ -52,8 +52,8 @@ jobs:
           set -euo pipefail
           version="${TAG#v}"
           want="$(jq -r .name server.json)"
-          if ! out="$(npm view "@ayersrepair/lancelot@${version}" name mcpName --json)"; then
-            echo "::error::@ayersrepair/lancelot@${version} is not on npm yet. Run npm publish --access public first, then re-run this workflow."
+          if ! out="$(npm view "@ayerselectronics/lancelot@${version}" name mcpName --json)"; then
+            echo "::error::@ayerselectronics/lancelot@${version} is not on npm yet. Run npm publish --access public first, then re-run this workflow."
             exit 1
           fi
           got="$(printf '%s' "$out" | jq -r .mcpName)"

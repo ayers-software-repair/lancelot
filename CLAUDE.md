@@ -4,7 +4,7 @@ Guidance for Claude Code and other agents working in this repository.
 
 ## What this is
 
-`@ayersrepair/lancelot`: an MCP server that searches a local LanceDB database, over stdio and,
+`@ayerselectronics/lancelot`: an MCP server that searches a local LanceDB database, over stdio and,
 with `--http`, over stateless Streamable HTTP (also a Lambda handler, `src/lambda.ts`). Four
 tools (`lancedb_search`, `lancedb_query`, `lancedb_status`, `lancedb_version`). No dashboard, no
 other transport. `lancelot-index` builds the table the server reads.

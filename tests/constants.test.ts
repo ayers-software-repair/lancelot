@@ -39,6 +39,18 @@ describe('constants', () => {
     expect(constants.MISC.VENDOR_NAME).toBe('Ayers Electronics');
   });
 
+  it('reports the published package identity in the runtime and registry', () => {
+    const root = join(SRC, '..');
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+    const registry = JSON.parse(readFileSync(join(root, 'server.json'), 'utf8'));
+    expect(pkg.name).toBe('@ayerselectronics/lancelot');
+    expect(constants.MISC.PACKAGE_NAME).toBe(pkg.name);
+    expect(registry.packages[0].identifier).toBe(pkg.name);
+    expect(registry.version).toBe(pkg.version);
+    expect(registry.packages[0].version).toBe(pkg.version);
+    expect(registry.name).toBe(pkg.mcpName);
+  });
+
   it('has every GROUP.KEY the source reads', () => {
     const groups = Object.entries(constants).filter(
       ([, value]) => typeof value === 'object' && !Array.isArray(value),

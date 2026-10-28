@@ -76,7 +76,7 @@ Claude Code, using the stdio form from the
 [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp.md):
 
 ```bash
-claude mcp add --env LANCEDB_PATH=/path/to/db --env OPENAI_API_KEY=... --transport stdio lancelot -- npx -y @ayersrepair/lancelot
+claude mcp add --env LANCEDB_PATH=/path/to/db --env OPENAI_API_KEY=... --transport stdio lancelot -- npx -y @ayerselectronics/lancelot
 ```
 
 `--transport stdio` sits between the last `--env` and the server name on purpose: the CLI reads a
@@ -91,7 +91,7 @@ Other MCP clients take the same command in their `mcpServers` configuration:
   "mcpServers": {
     "lancelot": {
       "command": "npx",
-      "args": ["-y", "@ayersrepair/lancelot"],
+      "args": ["-y", "@ayerselectronics/lancelot"],
       "env": {
         "LANCEDB_PATH": "/path/to/db",
         "OPENAI_API_KEY": "sk-..."
@@ -106,8 +106,8 @@ Other MCP clients take the same command in their `mcpServers` configuration:
 Open one of these in a browser or on the command line to add the server to the editor. Set
 `LANCEDB_PATH` to your database folder afterwards.
 
-- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayersrepair%2Flancelot%400.3.0%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
-- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc3JlcGFpci9sYW5jZWxvdEAwLjMuMCJdLCJlbnYiOnsiTEFOQ0VEQl9QQVRIIjoiL3BhdGgvdG8vZGIifX0=`
+- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayerselectronics%2Flancelot%400.3.1%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
+- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc2VsZWN0cm9uaWNzL2xhbmNlbG90QDAuMy4xIl0sImVudiI6eyJMQU5DRURCX1BBVEgiOiIvcGF0aC90by9kYiJ9fQ==`
 
 The link formats are from the
 [VS Code MCP guide](https://code.visualstudio.com/api/extension-guides/ai/mcp#create-an-mcp-installation-url)
@@ -115,21 +115,21 @@ and the [Cursor install links documentation](https://cursor.com/docs/mcp/install
 
 ### Registry
 
-Listed in the official MCP Registry as `io.github.ayers-software-repair/lancelot` once published.
+MCP Registry identity: `io.github.ayers-software-repair/lancelot`.
 
 ### Setup command
 
 `lancelot-init` asks for the database folder and an OpenAI API key, and stores them for later runs.
 The key goes to the operating system keychain through keytar, or to an encrypted file when keytar
-is not available. Run it with `npx -p @ayersrepair/lancelot lancelot-init`. Environment variables
+is not available. Run it with `npx -p @ayerselectronics/lancelot lancelot-init`. Environment variables
 override what it stored.
 
 ## HTTP mode
 
 ```bash
-npx -y @ayersrepair/lancelot --http                      # http://127.0.0.1:3000/mcp
-npx -y @ayersrepair/lancelot --http 8080
-npx -y @ayersrepair/lancelot --http 8080 --host 0.0.0.0  # all interfaces
+npx -y @ayerselectronics/lancelot --http                      # http://127.0.0.1:3000/mcp
+npx -y @ayerselectronics/lancelot --http 8080
+npx -y @ayerselectronics/lancelot --http 8080 --host 0.0.0.0  # all interfaces
 ```
 
 Without `--http` the server is stdio, exactly as before. With it, the server speaks the
@@ -183,8 +183,8 @@ docker buildx build --platform linux/arm64 --provenance=false -t lancelot-lambda
 files:
 
 ```bash
-npx -p @ayersrepair/lancelot lancelot-index ./docs ./db
-npx -p @ayersrepair/lancelot lancelot-index ./docs ./db --table documents
+npx -p @ayerselectronics/lancelot lancelot-index ./docs ./db
+npx -p @ayerselectronics/lancelot lancelot-index ./docs ./db --table documents
 ```
 
 It walks the folder and its subfolders (skipping names that start with a dot), strips HTML to

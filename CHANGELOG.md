@@ -3,6 +3,15 @@
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 follows [Semantic Versioning](https://semver.org/).
 
+## 0.3.1
+
+### Changed
+
+- Publish the npm package as `@ayerselectronics/lancelot` under the company organization.
+- Update the runtime package identity, MCP Registry package metadata, editor install links,
+  and release workflow to use the company scope.
+- Include the current hosted endpoint and privacy policy links in the published README.
+
 ## 0.3.0
 
 ### Added

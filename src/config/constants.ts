@@ -34,7 +34,7 @@ export const EMBEDDING_DEFAULTS = {
 export const MISC = {
   SERVICE_NAME: 'lancelot',
   VENDOR_NAME: 'Ayers Electronics',
-  PACKAGE_NAME: '@ayersrepair/lancelot',
+  PACKAGE_NAME: '@ayerselectronics/lancelot',
   DEFAULT_VERSION: '0.0.0',
   UNKNOWN_ERROR: 'Unknown error',
   KEYTAR_BACKEND: 'keytar',

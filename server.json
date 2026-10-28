@@ -3,7 +3,7 @@
   "name": "io.github.ayers-software-repair/lancelot",
   "description": "An MCP server for search and retrieval over a local LanceDB database",
   "title": "Lancelot",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "websiteUrl": "https://ayers.repair/marketplace.html",
   "repository": {
     "url": "https://github.com/ayers-software-repair/lancelot",
@@ -13,8 +13,8 @@
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
-      "identifier": "@ayersrepair/lancelot",
-      "version": "0.3.0",
+      "identifier": "@ayerselectronics/lancelot",
+      "version": "0.3.1",
       "transport": {
         "type": "stdio"
       },
