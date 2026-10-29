@@ -1,7 +1,7 @@
 name: registry
 
 # Publishes server.json to the official MCP Registry with GitHub OIDC (no secret).
-# The npm package for the tag must already exist; the owner publishes npm first.
+# Publishes the exact checked archive to npm through trusted publishing before registry metadata.
 
 on:
   push:
@@ -15,8 +15,62 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: lancelot-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
+  npm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Require the tag, main source and successful CI
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/release.mjs source
+      - run: npm ci
+      - run: npm run build
+      - name: Use an OIDC-capable npm CLI
+        run: npm install --global npm@^11.15.0
+      - name: Inspect the archive and existing registry version
+        id: pack
+        run: |
+          npm pack --json --ignore-scripts > "$RUNNER_TEMP/lancelot-pack.json"
+          node scripts/release.mjs inspect "$RUNNER_TEMP/lancelot-pack.json"
+      - name: Publish the inspected archive
+        if: steps.pack.outputs.exists != 'true'
+        env:
+          ARCHIVE: ${{ steps.pack.outputs.archive }}
+          CHANNEL: ${{ steps.source.outputs.channel }}
+        run: npm publish "./$ARCHIVE" --access public --tag "$CHANNEL" --provenance
+      - name: Verify public identity and archive integrity
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            echo "Checking npm publication ($attempt/6)"
+            if node scripts/release.mjs published "$RUNNER_TEMP/lancelot-pack.json"; then exit 0; fi
+            sleep 10
+          done
+          exit 1
+
   publish:
+    needs: npm
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -34,6 +88,11 @@ jobs:
         with:
           ref: refs/tags/${{ inputs.tag || github.ref_name }}
           persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
 
       - name: Tag matches server.json and package.json
         run: |
@@ -88,22 +147,13 @@ jobs:
       - name: Publish server.json
         run: ./mcp-publisher publish
 
-      - name: Registry lists this version
+      - name: Registry lists the exact server, package and remote
         run: |
-          set -euo pipefail
-          version="${TAG#v}"
-          name="$(jq -r .name server.json)"
-          for i in 1 2 3 4 5 6; do
-            if curl --fail --silent --show-error --get \
-                 --data-urlencode "search=${name}" \
-                 "https://registry.modelcontextprotocol.io/v0.1/servers" \
-               | jq -e --arg v "$version" '[.. | .version? | strings] | index($v) != null' >/dev/null; then
-              echo "registry lists ${name} ${version}"
-              exit 0
-            fi
+          for attempt in 1 2 3 4 5 6; do
+            echo "Checking MCP Registry publication ($attempt/6)"
+            if node scripts/release.mjs registry; then exit 0; fi
             sleep 10
           done
-          echo "::error::registry search for ${name} does not show version ${version}"
           exit 1
 
       - name: Redeploy the hosted endpoint

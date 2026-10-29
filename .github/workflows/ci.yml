@@ -45,6 +45,9 @@ jobs:
       - name: Source headers
         run: node scripts/check-headers.mjs
 
+      - name: Release guards without publication
+        run: node --test scripts/release.test.mjs
+
       # typecheck, lint, build, test
       - name: Check
         run: npm run check
