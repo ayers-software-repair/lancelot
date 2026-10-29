@@ -26,11 +26,17 @@
         },
         {
           "name": "OPENAI_API_KEY",
-          "description": "Enables vector search by sending query text to OpenAI to compute embeddings. Without it, search is text only and nothing leaves the machine.",
+          "description": "Optional OpenAI key for vector search. Query text is sent to OpenAI; otherwise a saved key is checked before falling back to local text search.",
           "isRequired": false,
           "isSecret": true
         }
       ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.ayers.repair/lancelot"
     }
   ]
 }

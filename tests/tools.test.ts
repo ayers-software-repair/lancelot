@@ -59,7 +59,7 @@ describe('tool registry', () => {
     for (const name of NAMES) {
       const tool = reg.getTool(name);
       expect(tool).toBeDefined();
-      const shape = (tool?.schema as z.AnyZodObject).shape;
+      const shape = (tool?.schema as z.ZodObject).shape;
       const listed = tool?.inputSchema.properties ?? {};
       expect(Object.keys(listed).sort()).toEqual(Object.keys(shape).sort());
       const required = Object.keys(shape).filter((key) => !shape[key]?.isOptional());
@@ -224,7 +224,6 @@ describe('lancedb_query', () => {
     expect(generateEmbedding).toHaveBeenCalledWith(expect.stringContaining('project overview'));
   });
 
-  it.todo('retrieves from a real LanceDB table (needs LanceDB and a fixture database)');
 });
 
 describe('text search filter', () => {
@@ -242,5 +241,4 @@ describe('text search filter', () => {
     );
   });
 
-  it.todo('runs the filter against a real LanceDB table (needs LanceDB)');
 });

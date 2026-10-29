@@ -82,7 +82,4 @@ describe('server module', () => {
     expect(calls(stdout)).toBe(0);
   });
 
-  it.todo(
-    'answers an initialize request with JSON lines only on stdout (needs a built dist: spawn node dist/bin/lancelot.js with a temp LANCEDB_PATH)',
-  );
 });

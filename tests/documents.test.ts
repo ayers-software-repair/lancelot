@@ -140,5 +140,4 @@ describe('parseIndexArgs', () => {
     }
   });
 
-  it.todo('lancelot-index writes a table that lancedb_search can read (needs LanceDB)');
 });

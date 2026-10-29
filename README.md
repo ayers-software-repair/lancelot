@@ -1,15 +1,102 @@
 # Lancelot
 
-Lancelot is an MCP server that answers search and retrieval queries against a local LanceDB
-database. It uses OpenAI embeddings for vector search when an API key is set, and plain text
-matching when it is not.
+Search your documents from any MCP-compatible assistant. Lancelot connects an agent to a local
+[LanceDB](https://lancedb.com/) database and returns matching passages with their sources.
 
-It reads the database folder and never writes to it. It speaks MCP over stdio, and over
-Streamable HTTP with `--http` (see [HTTP mode](#http-mode)).
+- **Local text search** works without an API key.
+- **Vector search** uses OpenAI embeddings when configured, with text search as a fallback.
+- **Read-only tools** retrieve documents and report database status. Indexing is a separate command.
+- **Stdio and Streamable HTTP** support local clients, shared servers and AWS Lambda.
 
-The public read-only instance over the Ayers documentation is at `https://mcp.ayers.repair/lancelot`.
-Any MCP client that supports Streamable HTTP can use that URL. The documents are built into a
-table with [`lancelot-index`](#index-your-documents).
+[Install](#install) · [Index documents](#index-your-documents) · [Tools](#tools) ·
+[HTTP hosting](#http-mode) · [Privacy](#privacy)
+
+## Try the hosted server
+
+Connect an MCP client to **`https://mcp.ayers.repair/lancelot`** to search the public Ayers
+documentation. This hosted instance does not read your files. To search your own documents,
+run the local server below.
+
+## Install
+
+Requires **Node.js 20 or later** and a LanceDB database folder. If you do not have a database,
+[index a folder of documents](#index-your-documents) first. Use the database's absolute path in
+your client configuration.
+
+Claude Code, using the stdio form from the
+[Claude Code MCP documentation](https://code.claude.com/docs/en/mcp.md):
+
+```bash
+claude mcp add --env LANCEDB_PATH=/path/to/db --transport stdio lancelot -- npx -y @ayerselectronics/lancelot
+```
+
+`--transport stdio` sits between the last `--env` and the server name on purpose: the CLI reads a
+name that follows `--env` directly as another variable. Everything after `--` runs the server.
+
+For vector search, add `--env OPENAI_API_KEY=YOUR_KEY` before `--transport`. Your table must contain
+vectors created with the configured embedding model. Query text is then sent to OpenAI.
+
+Other MCP clients take the same command in their `mcpServers` configuration:
+
+```json
+{
+  "mcpServers": {
+    "lancelot": {
+      "command": "npx",
+      "args": ["-y", "@ayerselectronics/lancelot"],
+      "env": {
+        "LANCEDB_PATH": "/path/to/db"
+      }
+    }
+  }
+}
+```
+
+### Install links
+
+Open one of these in a browser or on the command line to add the server to the editor. Set
+`LANCEDB_PATH` to your database folder afterwards.
+
+- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayerselectronics%2Flancelot%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
+- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc2VsZWN0cm9uaWNzL2xhbmNlbG90Il0sImVudiI6eyJMQU5DRURCX1BBVEgiOiIvcGF0aC90by9kYiJ9fQ==`
+
+The link formats are from the
+[VS Code MCP guide](https://code.visualstudio.com/api/extension-guides/ai/mcp#create-an-mcp-installation-url)
+and the [Cursor install links documentation](https://cursor.com/docs/mcp/install-links.md).
+
+### Registry
+
+MCP Registry identity: `io.github.ayers-software-repair/lancelot`.
+
+### Setup command
+
+`lancelot-init` asks for the database folder and an OpenAI API key, and stores them for later runs.
+The key goes to the operating system keychain through keytar, or to an encrypted file when keytar
+is not available. Run it with `npx -p @ayerselectronics/lancelot lancelot-init`. Environment variables
+override what it stored.
+
+## Index your documents
+
+`lancelot-index` builds the table the server reads from a folder of `.md`, `.txt` and `.html`
+files:
+
+```bash
+npx -p @ayerselectronics/lancelot lancelot-index ./docs ./db
+npx -p @ayerselectronics/lancelot lancelot-index ./docs ./db --table documents
+```
+
+**Rebuilding replaces the named table.** Keep the original documents and choose a separate
+database folder for each collection you want to manage independently.
+
+It walks the folder and its subfolders (skipping names that start with a dot), strips HTML to
+text, and splits each file into chunks of about 1,200 characters on paragraph boundaries. A
+paragraph longer than that is cut at a space. Each chunk becomes a row `{ id, path, title, text }`:
+`id` is the relative path and chunk number, `path` is the relative path, and `title` is the first
+Markdown heading of the file, or the file name. There are no vectors, so search is text search.
+
+`--table` names the table (default `documents`). The command replaces that table if it exists, so
+running it again rebuilds the table from the folder. It is the only part of the package that writes
+to a database; the server never does. Point `LANCEDB_PATH` at the database folder afterwards.
 
 ## Tools
 
@@ -70,60 +157,6 @@ and `chunkSource`, `docSource` or `path` for the source, when a row has them; th
 layout AnythingLLM writes, and `path` is what `lancelot-index` writes. Other columns come back as `metadata`. Vector search needs vectors made with the same model
 as `EMBEDDING_MODEL`.
 
-## Install
-
-Claude Code, using the stdio form from the
-[Claude Code MCP documentation](https://code.claude.com/docs/en/mcp.md):
-
-```bash
-claude mcp add --env LANCEDB_PATH=/path/to/db --env OPENAI_API_KEY=... --transport stdio lancelot -- npx -y @ayerselectronics/lancelot
-```
-
-`--transport stdio` sits between the last `--env` and the server name on purpose: the CLI reads a
-name that follows `--env` directly as another variable. Everything after `--` runs the server.
-
-Leave out `--env OPENAI_API_KEY=...` for text search only.
-
-Other MCP clients take the same command in their `mcpServers` configuration:
-
-```json
-{
-  "mcpServers": {
-    "lancelot": {
-      "command": "npx",
-      "args": ["-y", "@ayerselectronics/lancelot"],
-      "env": {
-        "LANCEDB_PATH": "/path/to/db",
-        "OPENAI_API_KEY": "sk-..."
-      }
-    }
-  }
-}
-```
-
-### Install links
-
-Open one of these in a browser or on the command line to add the server to the editor. Set
-`LANCEDB_PATH` to your database folder afterwards.
-
-- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayerselectronics%2Flancelot%400.3.1%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
-- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc2VsZWN0cm9uaWNzL2xhbmNlbG90QDAuMy4xIl0sImVudiI6eyJMQU5DRURCX1BBVEgiOiIvcGF0aC90by9kYiJ9fQ==`
-
-The link formats are from the
-[VS Code MCP guide](https://code.visualstudio.com/api/extension-guides/ai/mcp#create-an-mcp-installation-url)
-and the [Cursor install links documentation](https://cursor.com/docs/mcp/install-links.md).
-
-### Registry
-
-MCP Registry identity: `io.github.ayers-software-repair/lancelot`.
-
-### Setup command
-
-`lancelot-init` asks for the database folder and an OpenAI API key, and stores them for later runs.
-The key goes to the operating system keychain through keytar, or to an encrypted file when keytar
-is not available. Run it with `npx -p @ayerselectronics/lancelot lancelot-init`. Environment variables
-override what it stored.
-
 ## HTTP mode
 
 ```bash
@@ -132,16 +165,15 @@ npx -y @ayerselectronics/lancelot --http 8080
 npx -y @ayerselectronics/lancelot --http 8080 --host 0.0.0.0  # all interfaces
 ```
 
-Without `--http` the server is stdio, exactly as before. With it, the server speaks the
-[Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
-of MCP 2025-06-18, the protocol version of the SDK Lancelot is built on. `--http` takes an optional
+Without `--http` the server uses stdio. With it, the server uses MCP
+[Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports).
+The SDK negotiates the protocol version with each client. `--http` takes an optional
 port (default 3000). The server binds `127.0.0.1` unless `--host` names another address, as the
 specification advises for a local server. The endpoint is `/mcp`; any other path is 404.
 
 - **Origin.** The specification says the server must validate the `Origin` header. A request that
   carries an `Origin` not listed in `LANCELOT_ALLOWED_ORIGINS` gets 403. With the variable unset,
-  every request that carries an `Origin` gets 403. A request with no `Origin` header is not from a
-  browser and is let through; the SDK's own origin check refuses those, so Lancelot does the check
+  every request that carries an `Origin` gets 403. A request with no `Origin` header is allowed; an absent header is not an authentication check; the SDK's own origin check refuses those, so Lancelot does the check
   itself.
 - **Host.** `LANCELOT_ALLOWED_HOSTS` lists the `Host` header values that may call, for DNS
   rebinding protection. Left unset on a loopback bind, it defaults to `127.0.0.1:<port>`,
@@ -177,32 +209,11 @@ Node.js 24 base image for arm64, with the handler `dist/lambda.handler`. Build `
 docker buildx build --platform linux/arm64 --provenance=false -t lancelot-lambda .
 ```
 
-## Index your documents
-
-`lancelot-index` builds the table the server reads from a folder of `.md`, `.txt` and `.html`
-files:
-
-```bash
-npx -p @ayerselectronics/lancelot lancelot-index ./docs ./db
-npx -p @ayerselectronics/lancelot lancelot-index ./docs ./db --table documents
-```
-
-It walks the folder and its subfolders (skipping names that start with a dot), strips HTML to
-text, and splits each file into chunks of about 1,200 characters on paragraph boundaries. A
-paragraph longer than that is cut at a space. Each chunk becomes a row `{ id, path, title, text }`:
-`id` is the relative path and chunk number, `path` is the relative path, and `title` is the first
-Markdown heading of the file, or the file name. There are no vectors, so search is text search.
-
-`--table` names the table (default `documents`). The command replaces that table if it exists, so
-running it again rebuilds the table from the folder. It is the only part of the package that writes
-to a database; the server never does. Point `LANCEDB_PATH` at the database folder afterwards.
-
 ## Environment variables
 
 Settings come from, in order: the environment, the file written by `lancelot-init`, the defaults.
-A variable that is empty or only whitespace counts as not set. MCP clients that substitute a blank
-optional value pass an empty string, and Lancelot then behaves as if the variable were absent: no
-OpenAI client is created, search is text only, and nothing is logged as an error.
+A variable that is empty or only whitespace counts as not set; the stored value is checked next.
+Text search is used when no OpenAI key is available from either source.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -243,15 +254,18 @@ The four tools open a table and query it. No code the server runs creates a tabl
 deletes rows, or builds an index, and the server does not create the database folder if the path is
 wrong. The one exception in `src` is `src/bin/lancelot-index.ts`, a separate command that builds a
 table (see [Index your documents](#index-your-documents)); the server never imports it.
-`tests/readonly.test.ts` scans the rest of the source for those calls.
+`tests/readonly.test.ts` scans the rest of the source for those calls, and
+`tests/integration.test.ts` compares every database file before and after all four tools run.
 
 Lancelot keeps its own settings and credentials in the per-user configuration directory, never in
 the database folder.
 
 ## Privacy
 
-When `OPENAI_API_KEY` is set, query text is sent to OpenAI to compute embeddings. With no key
-nothing leaves the machine.
+Local text search runs on your machine. When an OpenAI key is available from the environment or
+your saved credentials, vector search sends query text to OpenAI to compute embeddings. Database
+contents are returned to the MCP client you connected; that client controls how it uses them.
+The public hosted endpoint receives the queries you send to it.
 
 [Privacy policy](https://ayers.repair/legal/lancelot/privacy.html) and
 [terms](https://ayers.repair/legal/lancelot/terms.html): the full statement, including what the
@@ -261,7 +275,7 @@ hosted endpoint receives.
 
 ```bash
 npm ci
-npm run check    # typecheck, lint, test, build
+npm run check    # typecheck, lint, build, unit and integration tests
 ```
 
 Node 20 or later. See `CONTRIBUTING.md`.

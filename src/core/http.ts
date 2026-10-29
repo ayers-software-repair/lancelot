@@ -8,12 +8,12 @@ import { HTTP_DEFAULTS } from '../config/constants.js';
 
 /**
  * The Streamable HTTP transport, stateless and read-only.
- * MCP transports, 2025-06-18 (the version the SDK in package.json speaks):
+ * MCP Streamable HTTP transport (the SDK negotiates the supported protocol version):
  * https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
  *
  * - Origin: the spec says a server MUST validate it. A request that carries an Origin not in
- *   `allowedOrigins` gets 403. A request with no Origin is a client that is not a browser, and
- *   passes. (The SDK's own `allowedOrigins` option rejects a missing Origin, so it is not used.)
+ *   `allowedOrigins` gets 403. A request with no Origin passes; absence does not authenticate it.
+ *   (The SDK's own `allowedOrigins` option rejects a missing Origin, so it is not used.)
  * - Host: `allowedHosts` goes to the SDK's DNS rebinding protection, which answers 403.
  * - Stateless: no session id. A new server and transport serve each request and are closed when
  *   the response ends, as in the SDK's stateless example. Only POST is served; GET (the optional

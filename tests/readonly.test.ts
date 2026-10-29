@@ -76,5 +76,4 @@ describe('read-only', () => {
     expect(importing).toEqual([]);
   });
 
-  it.todo('opens a real database, runs every tool, and finds the folder byte-identical (needs LanceDB)');
 });

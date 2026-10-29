@@ -45,7 +45,7 @@ jobs:
       - name: Source headers
         run: node scripts/check-headers.mjs
 
-      # typecheck, lint, test, build
+      # typecheck, lint, build, test
       - name: Check
         run: npm run check
 
