@@ -5,6 +5,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Search excerpts include a matching query term when it occurs beyond the leading 500 characters; citations and result order are unchanged.
+
 ### Fixed
 
 - Update MCP SDK to 1.32.2, Zod to 4.6.7 and OpenAI SDK to 6.49.0 to remove the reported production dependency advisories.
