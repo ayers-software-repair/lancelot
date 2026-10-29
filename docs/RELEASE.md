@@ -88,7 +88,7 @@ gh run list --workflow ci.yml --commit COMMIT_SHA --event push --branch main
 gh run list --workflow registry.yml --limit 5
 ```
 
-`node --test scripts/release.test.mjs` checks the release refusals without authentication,
+`npx vitest run scripts/release.test.mjs --maxWorkers=1` checks the release refusals without authentication,
 publication or a provider call. Hosted `ci.yml` runs it on both supported Node versions.
 
 ## Consumer automation still to complete

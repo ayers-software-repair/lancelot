@@ -1,7 +1,7 @@
 // Copyright Ayers Electronics Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import { checkPublication, checkSource, checkRegistryRecord, registryVersion } from './release.mjs';
 
 const pkg = {
