@@ -57,8 +57,8 @@ Other MCP clients take the same command in their `mcpServers` configuration:
 Open one of these in a browser or on the command line to add the server to the editor. Set
 `LANCEDB_PATH` to your database folder afterwards.
 
-- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayerselectronics%2Flancelot%400.3.1%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
-- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc2VsZWN0cm9uaWNzL2xhbmNlbG90QDAuMy4xIl0sImVudiI6eyJMQU5DRURCX1BBVEgiOiIvcGF0aC90by9kYiJ9fQ==`
+- VS Code: `vscode:mcp/install?%7B%22name%22%3A%22lancelot%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40ayerselectronics%2Flancelot%22%5D%2C%22env%22%3A%7B%22LANCEDB_PATH%22%3A%22%2Fpath%2Fto%2Fdb%22%7D%7D`
+- Cursor: `cursor://anysphere.cursor-deeplink/mcp/install?name=lancelot&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBheWVyc2VsZWN0cm9uaWNzL2xhbmNlbG90Il0sImVudiI6eyJMQU5DRURCX1BBVEgiOiIvcGF0aC90by9kYiJ9fQ==`
 
 The link formats are from the
 [VS Code MCP guide](https://code.visualstudio.com/api/extension-guides/ai/mcp#create-an-mcp-installation-url)
