@@ -195,7 +195,9 @@ describe('lancedb_search', () => {
       const shown = (out.results as { text: string }[])[0]?.text ?? '';
       expect(shown.toLowerCase()).toContain('howland');
       expect(shown.length).toBeLessThanOrEqual(506);
-      if (text.length < 500) expect(shown).toBe(text);
+      if (text.length < 500) {
+        expect(shown).toBe(text);
+      }
     }
   });
 

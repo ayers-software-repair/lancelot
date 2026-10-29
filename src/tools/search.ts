@@ -9,7 +9,9 @@ import { retrieve } from './retrieve.js';
 import { queryTerms } from '../services/text-query.js';
 
 function excerpt(text: string, query: string, size: number): string {
-  if (text.length <= size) return text;
+  if (text.length <= size) {
+    return text;
+  }
   const lower = text.toLowerCase();
   const match =
     queryTerms(query)
