@@ -58,6 +58,30 @@ describe('logger', () => {
     }
   });
 
+  it('keeps query text out of structured errors at every level', async () => {
+    const sentinel = 'private-query-sentinel-7e3b';
+    const error = new Error(sentinel);
+    const logger = new LoggerService({ level: 'silly' });
+    const { stdout, stderr } = watch();
+    for (const level of LOG_LEVELS) {
+      for (const failure of [error, { message: sentinel, stack: sentinel }, sentinel]) {
+        logger.log(level, 'Retrieval failed', { error: failure, tableName: 'documents' });
+      }
+      logger.log(level, 'Nested failure', { details: { exception: error } });
+    }
+    await tick();
+    const output = stderr
+      .flatMap((spy) => spy.mock.calls)
+      .map((args) => String(args[0]))
+      .join('');
+    expect(output).not.toContain(sentinel);
+    expect(output).toContain('Retrieval failed');
+    expect(output).toContain('Nested failure');
+    expect(output).toContain('"tableName":"documents"');
+    expect(calls(stderr)).toBeGreaterThanOrEqual(LOG_LEVELS.length * 4);
+    expect(calls(stdout)).toBe(0);
+  });
+
   it('writes nothing to stdout at any level', async () => {
     const logger = new LoggerService({ level: 'silly' });
     const { stdout, stderr } = watch();
