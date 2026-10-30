@@ -8,8 +8,29 @@ Search your documents from any MCP-compatible assistant. Lancelot connects an ag
 - **Read-only tools** retrieve documents and report database status. Indexing is a separate command.
 - **Stdio and Streamable HTTP** support local clients, shared servers and AWS Lambda.
 
-[Install](#install) · [Index documents](#index-your-documents) · [Tools](#tools) ·
+[Quickstart](#quickstart) · [Install](#install) · [Index documents](#index-your-documents) · [Tools](#tools) ·
 [HTTP hosting](#http-mode) · [Privacy](#privacy)
+
+## Quickstart
+
+Requires **Node.js 20 or later**. First, create a local LanceDB database from your documents
+(replace `./docs` with a folder containing `.md`, `.txt` or `.html` files):
+
+```bash
+npx -y --package @ayerselectronics/lancelot lancelot-index ./docs ./lancelot-db
+```
+
+This creates the `documents` table in `./lancelot-db` for local text search; no API key is needed.
+Running it again **replaces that table** with the folder's current contents.
+
+Then, from the same directory, add the server to Claude Code using that database's absolute path:
+
+```bash
+claude mcp add --env LANCEDB_PATH="$PWD/lancelot-db" --transport stdio lancelot -- npx -y @ayerselectronics/lancelot
+```
+
+Ask Claude to search your documents with `lancedb_search`. For other MCP clients, see
+[Install](#install); for table options, see [Index your documents](#index-your-documents).
 
 ## Try the hosted server
 
