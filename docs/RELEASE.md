@@ -112,8 +112,9 @@ The ARM image job uses repository variable `CI_PUBLIC_ECR_ROLE`, naming the role
 `infra/ci-public-pull-trust.json` binds the existing GitHub OIDC provider to this repository's
 verified immutable owner/repository IDs, main pushes and pull-request jobs. That includes
 pull-request code when GitHub permits its OIDC token; the role grants no private data or writes.
-`infra/ci-public-pull-policy.json` allows only public-registry authentication, with the STS bearer
-token restricted to ECR Public. The workflow requests a 15-minute AWS session and logs Docker out
+`infra/ci-public-pull-policy.json` allows the two authentication actions in AWS’s documented
+ECR Public login policy. The initial ECR-specific STS condition was rejected by the real login;
+the owner approved its removal on 30 October 2026. This role has no other service API grants. The workflow requests a 15-minute AWS session and logs Docker out
 on completion. ECR's derived registry token lasts up to 12 hours.
 
 Apply only after reading live role state. Create the role with this trust document and its
