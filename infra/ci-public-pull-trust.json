@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::993011736775:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": [
+            "repo:ayers-software-repair@301401386/lancelot@1436325534:ref:refs/heads/main",
+            "repo:ayers-software-repair@301401386/lancelot@1436325534:pull_request"
+          ]
+        }
+      }
+    }
+  ]
+}
