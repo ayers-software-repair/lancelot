@@ -10,8 +10,9 @@ export interface LoggingConfig {
   silent?: boolean;
 }
 
-const serialize = (_key: string, value: unknown): unknown =>
-  value instanceof Error ? { message: value.message, stack: value.stack } : value;
+// Backend error payloads can contain query text; retain only the operation and other metadata.
+const serialize = (key: string, value: unknown): unknown =>
+  key === 'error' || value instanceof Error ? '[redacted]' : value;
 
 export class LoggerService {
   private logger: winston.Logger;
