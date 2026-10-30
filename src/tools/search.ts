@@ -6,6 +6,21 @@ import { BaseTool } from '../core/tool-base.js';
 import type { InputSchema, ToolContext } from '../core/tool-base.js';
 import { ERROR_MESSAGES, LANCEDB_DEFAULTS, SEARCH_TYPES, TOOL_NAMES } from '../config/constants.js';
 import { retrieve } from './retrieve.js';
+import { queryTerms } from '../services/text-query.js';
+
+function excerpt(text: string, query: string, size: number): string {
+  if (text.length <= size) {
+    return text;
+  }
+  const lower = text.toLowerCase();
+  const match =
+    queryTerms(query)
+      .map((term) => lower.indexOf(term))
+      .find((at) => at >= 0) ?? 0;
+  const start = Math.max(0, Math.min(match - Math.floor(size / 3), text.length - size));
+  const end = start + size;
+  return `${start ? '...' : ''}${text.slice(start, end)}${end < text.length ? '...' : ''}`;
+}
 
 export const searchArgs = z.object({
   query: z.string().min(1),
@@ -43,7 +58,11 @@ export class SearchTool extends BaseTool<typeof searchArgs> {
   };
 
   constructor(context: ToolContext) {
-    super(TOOL_NAMES.SEARCH, 'Search LanceDB for relevant documents using vector or text search', context);
+    super(
+      TOOL_NAMES.SEARCH,
+      'Search LanceDB for relevant documents using vector or text search',
+      context,
+    );
   }
 
   protected async run(args: z.infer<typeof searchArgs>): Promise<CallToolResult> {
@@ -81,7 +100,7 @@ export class SearchTool extends BaseTool<typeof searchArgs> {
               rank: index + 1,
               title: result.title,
               source: result.source,
-              text: result.text.length > cut ? `${result.text.substring(0, cut)}...` : result.text,
+              text: excerpt(result.text, args.query, cut),
               score: result.score,
               metadata: result.metadata,
             })),

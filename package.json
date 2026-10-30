@@ -1,6 +1,6 @@
 {
   "name": "@ayerselectronics/lancelot",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "mcpName": "io.github.ayers-software-repair/lancelot",
   "description": "An MCP server for search and retrieval over a local LanceDB database",
   "type": "module",

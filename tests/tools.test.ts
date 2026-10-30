@@ -17,7 +17,11 @@ function registry(context: Partial<ToolContext> = {}): ToolRegistry {
 const hit = (text: string): SearchResult => ({ text, title: 't', source: 's' });
 
 /** A LanceDB service and an embeddings client that answer from memory. */
-function fakes(options: { vector?: SearchResult[]; vectorFails?: boolean; embedding?: number[] | null }) {
+function fakes(options: {
+  vector?: SearchResult[];
+  vectorFails?: boolean;
+  embedding?: number[] | null;
+}) {
   const vectorSearch = vi.fn(async () => {
     if (options.vectorFails) {
       throw new Error('boom');
@@ -30,7 +34,11 @@ function fakes(options: { vector?: SearchResult[]; vectorFails?: boolean; embedd
   const context = {
     lancedb: { vectorSearch, textSearch },
     embeddings: { isAvailable: () => embedding !== null, generateEmbedding },
-    configService: { getConfig: () => ({ lancedb: { defaultTable: 'docs', defaultLimit: 7, contextBudget: 8000 } }) },
+    configService: {
+      getConfig: () => ({
+        lancedb: { defaultTable: 'docs', defaultLimit: 7, contextBudget: 8000 },
+      }),
+    },
   } as unknown as Partial<ToolContext>;
   return { context, vectorSearch, textSearch, generateEmbedding };
 }
@@ -42,7 +50,9 @@ async function json(promise: Promise<{ content: unknown[] }>): Promise<Record<st
 
 describe('tool registry', () => {
   it('lists exactly the four tools', () => {
-    const names = registry().listTools().map((tool) => tool.name);
+    const names = registry()
+      .listTools()
+      .map((tool) => tool.name);
     expect(names.sort()).toEqual(NAMES);
     expect(names).not.toContain('lancedb_dashboard');
   });
@@ -158,6 +168,46 @@ describe('lancedb_version', () => {
 });
 
 describe('lancedb_search', () => {
+  it('shows the matching text when it occurs after the first 500 characters', async () => {
+    const { context, textSearch } = fakes({});
+    textSearch.mockResolvedValue([
+      hit('Unrelated introduction. '.repeat(35) + 'Howland is an offline library.'),
+    ]);
+    const out = await json(
+      registry(context).executeTool('lancedb_search', { query: 'Howland', searchType: 'text' }),
+    );
+    const results = out.results as { text: string; source: string }[];
+    expect(results[0]?.text).toContain('Howland is an offline library.');
+    expect(results[0]?.source).toBe('s');
+    expect(results[0]?.text.length).toBeLessThanOrEqual(506);
+  });
+
+  it('keeps short excerpts unchanged and matches query terms without case sensitivity', async () => {
+    const { context, textSearch } = fakes({});
+    for (const text of [
+      'Howland is an offline library.',
+      'x '.repeat(400) + 'HOWLAND documentation.',
+    ]) {
+      textSearch.mockResolvedValue([hit(text)]);
+      const out = await json(
+        registry(context).executeTool('lancedb_search', { query: 'howland', searchType: 'text' }),
+      );
+      const shown = (out.results as { text: string }[])[0]?.text ?? '';
+      expect(shown.toLowerCase()).toContain('howland');
+      expect(shown.length).toBeLessThanOrEqual(506);
+      if (text.length < 500) {
+        expect(shown).toBe(text);
+      }
+    }
+  });
+
+  it('keeps the leading excerpt for a semantic hit with no literal query term', async () => {
+    const text = 'Related context. '.repeat(50);
+    const { context } = fakes({ vector: [hit(text)] });
+    const out = await json(registry(context).executeTool('lancedb_search', { query: 'other' }));
+    expect((out.results as { text: string }[])[0]?.text).toBe(text.slice(0, 500) + '...');
+  });
+
   it('reports vector when the vector search ran', async () => {
     const { context, vectorSearch } = fakes({});
     const out = await json(registry(context).executeTool('lancedb_search', { query: 'q' }));
@@ -223,7 +273,6 @@ describe('lancedb_query', () => {
     await registry(context).executeTool('lancedb_query', { question: 'ignored', warmStart: true });
     expect(generateEmbedding).toHaveBeenCalledWith(expect.stringContaining('project overview'));
   });
-
 });
 
 describe('text search filter', () => {
@@ -240,5 +289,4 @@ describe('text search filter', () => {
       "lower(`text`) LIKE '%a%' OR lower(`text`) LIKE '%b%'",
     );
   });
-
 });

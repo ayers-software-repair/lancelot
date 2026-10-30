@@ -3,7 +3,9 @@
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.3.2
+
+- Search excerpts include a matching query term when it occurs beyond the leading 500 characters; citations and result order are unchanged.
 
 ### Fixed
 
@@ -13,6 +15,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Authenticate the ARM image check against ECR Public through its read-only CI role.
 - Replace six integration TODOs with real indexing, text retrieval, escaped-filter, read-only, stdio and cold/warm Lambda checks.
 - Test the real OpenAI SDK against local HTTP fixtures, including unavailable embeddings and error responses.
 - Build before tests and run test workers sequentially to bound native-database resource use.

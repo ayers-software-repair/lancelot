@@ -101,9 +101,32 @@ A website push must not generate a package version or release tag.
 
 ## Publisher migration
 
-The replacement `@ayerselectronics/lancelot@0.3.1` and hosted 0.3.1 are verified. A fresh public
-registry read on 29 October 2026 still lists `@ayersrepair/lancelot` versions `0.0.0-stage` and
-`0.3.0`; removal is not complete. The owner must finish it and the result must be read back.
-Do not mark a security-key authorization as proof of deletion. Existing old-scope lockfiles
-will stop resolving after unpublication; the replacement scope and consumer references must
-remain available.
+The owner removed `@ayersrepair/lancelot` on 30 October 2026. Public registry readback returned
+404 while `@ayerselectronics/lancelot@0.3.1` remained available. Keep consumer references on
+`@ayerselectronics`; do not recreate the old scope.
+
+## CI public-registry authentication
+
+The ARM image job uses repository variable `CI_PUBLIC_ECR_ROLE`, naming the role
+`gh-lancelot-ci-public-pull` in account 993011736775. Provisioning requires owner approval.
+`infra/ci-public-pull-trust.json` binds the existing GitHub OIDC provider to this repository's
+verified immutable owner/repository IDs, main pushes and pull-request jobs. That includes
+pull-request code when GitHub permits its OIDC token; the role grants no private data or writes.
+`infra/ci-public-pull-policy.json` allows the two authentication actions in AWS’s documented
+ECR Public login policy. The initial ECR-specific STS condition was rejected by the real login;
+the owner approved its removal on 30 October 2026. This role has no other service API grants. The workflow requests a 15-minute AWS session and logs Docker out
+on completion. ECR's derived registry token lasts up to 12 hours.
+
+Apply only after reading live role state. Create the role with this trust document and its
+`public-base-image-pull` inline policy, then set `CI_PUBLIC_ECR_ROLE` to its ARN. Do not broaden
+the company deployment role. Authenticated public pulls use the account's monthly transfer
+allowance; transfer beyond the allowance is billable. No private-registry, image-push, S3,
+application, hosting or deployment permission is granted.
+
+Rollback: revert the workflow change, remove `CI_PUBLIC_ECR_ROLE`, delete the inline policy and
+then the role. Do not change the image registry to evade a rejection. If authentication still
+receives a quota rejection, retain the failure and stop retries until the cause changes.
+
+References: [AWS registry authentication](https://docs.aws.amazon.com/AmazonECR/latest/public/public-registry-auth.html),
+[AWS transfer pricing](https://aws.amazon.com/ecr/pricing/), and
+[GitHub OIDC subjects](https://docs.github.com/en/actions/reference/security/oidc).
