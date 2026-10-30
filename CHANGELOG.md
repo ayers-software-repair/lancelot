@@ -3,6 +3,16 @@
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 follows [Semantic Versioning](https://semver.org/).
 
+## 0.3.3
+
+### Fixed
+
+- Redact structured exception payloads from logs so backend error messages and stacks cannot echo query text. Operation metadata and client error responses are unchanged.
+
+### Changed
+
+- Start the README quickstart with the local database indexing command before client setup, including the table replacement warning.
+
 ## 0.3.2
 
 - Search excerpts include a matching query term when it occurs beyond the leading 500 characters; citations and result order are unchanged.
