@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -83,6 +83,62 @@ export function archiveReceipt(role, pkg, integrity, env) {
   };
 }
 
+// Callers authenticate both receipt artifacts and original npm provenance before using this result.
+export function releasePayload(producer, completion) {
+  for (const [receipt, role] of [
+    [producer, 'producer'],
+    [completion, 'completion'],
+  ]) {
+    assert.ok(receipt && typeof receipt === 'object');
+    const normalized = archiveReceipt(
+      role,
+      { name: receipt.package, version: receipt.version },
+      receipt.integrity,
+      {
+        GITHUB_REPOSITORY: receipt.repository,
+        TAG: receipt.tag,
+        GITHUB_REF: `refs/tags/${receipt.tag}`,
+        GITHUB_SHA: receipt.commit,
+        GITHUB_RUN_ID: receipt.observation?.runId,
+        GITHUB_RUN_ATTEMPT: String(receipt.observation?.runAttempt),
+      },
+    );
+    assert.deepEqual(receipt, normalized, 'receipt fields or role differ');
+    assert.match(receipt.version, /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/);
+    assert.ok(
+      receipt.version.split('.').every((value) => Number(value) <= 65535),
+      'version is out of range',
+    );
+    assert.equal(
+      Buffer.from(receipt.integrity.slice(7), 'base64').toString('base64'),
+      receipt.integrity.slice(7),
+      'noncanonical integrity',
+    );
+  }
+  const { observation: producerRun, ...producerArchive } = producer;
+  const { observation: completionRun, ...completionArchive } = completion;
+  assert.deepEqual(completionArchive, producerArchive, 'completion archive differs from producer');
+  assert.equal(
+    completionRun.runId,
+    producerRun.runId,
+    'completion must belong to the original run',
+  );
+  assert.ok(completionRun.runAttempt >= producerRun.runAttempt, 'completion precedes producer');
+  return {
+    schema: 1,
+    release: {
+      repository: producer.repository,
+      tag: producer.tag,
+      commit: producer.commit,
+      package: producer.package,
+      version: producer.version,
+      integrity: producer.integrity,
+      publicationRunId: producerRun.runId,
+      publicationRunAttempt: producerRun.runAttempt,
+    },
+  };
+}
+
 export function checkRegistryRecord(record, expected) {
   const actual = record.server;
   assert.equal(actual?.name, expected.name, 'registry server identity mismatch');
@@ -120,8 +176,25 @@ export async function registryVersion(pkg, fetcher = fetch) {
 
 async function main() {
   const json = (name) => JSON.parse(readFileSync(name, 'utf8'));
-  const pkg = json('package.json');
   const mode = process.argv[2];
+  if (mode === 'payload') {
+    assert.equal(
+      process.argv.length,
+      5,
+      'expected authenticated producer and completion receipt paths',
+    );
+    const receipt = (name) => {
+      assert.ok(statSync(name).size <= 4096, 'receipt exceeds 4096 bytes');
+      const bytes = readFileSync(name);
+      assert.ok(bytes.length <= 4096, 'receipt exceeds 4096 bytes');
+      return JSON.parse(bytes.toString('utf8'));
+    };
+    process.stdout.write(
+      JSON.stringify(releasePayload(receipt(process.argv[3]), receipt(process.argv[4]))) + '\n',
+    );
+    return;
+  }
+  const pkg = json('package.json');
   if (mode === 'source') {
     const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
     const sha = process.env.GITHUB_SHA;

@@ -15,6 +15,7 @@ import {
   checkSource,
   checkRegistryRecord,
   registryVersion,
+  releasePayload,
 } from './release.mjs';
 
 const bytes = Buffer.from('synthetic archive bytes');
@@ -103,6 +104,63 @@ test('later completion observes its own attempt without replacing the original p
   assert.throws(() => archiveReceipt('producer', pkg, 'sha512-invalid', receiptEnv));
 });
 
+test('schema1 payload keeps the original producer across later completion attempts', () => {
+  const producer = archiveReceipt('producer', pkg, integrity, receiptEnv);
+  const completion = archiveReceipt('completion', pkg, integrity, {
+    ...receiptEnv,
+    GITHUB_RUN_ATTEMPT: '2',
+  });
+  const payload = releasePayload(producer, completion);
+  assert.deepEqual(payload, {
+    schema: 1,
+    release: {
+      repository: receiptEnv.GITHUB_REPOSITORY,
+      tag: 'v0.3.2',
+      commit: receiptEnv.GITHUB_SHA,
+      package: pkg.name,
+      version: '0.3.2',
+      integrity,
+      publicationRunId: '123456',
+      publicationRunAttempt: 1,
+    },
+  });
+  assert.deepEqual(
+    releasePayload(producer, {
+      ...completion,
+      observation: { ...completion.observation, runAttempt: 1 },
+    }),
+    payload,
+  );
+  for (const change of [
+    { integrity: `sha512-${Buffer.alloc(64, 1).toString('base64')}` },
+    { commit: 'b'.repeat(40) },
+    { tag: 'v0.3.3', version: '0.3.3' },
+    { observation: { ...completion.observation, runId: '654321' } },
+    { observation: { ...completion.observation, runAttempt: 0 } },
+    { observation: { ...completion.observation, runAttempt: '2' } },
+    { observation: { ...completion.observation, role: 'producer' } },
+    { producer: producer.observation },
+    { schema: 2 },
+  ])
+    assert.throws(() => releasePayload(producer, { ...completion, ...change }));
+  assert.throws(() =>
+    releasePayload(
+      { ...producer, observation: { ...producer.observation, runAttempt: 3 } },
+      completion,
+    ),
+  );
+  assert.throws(() => releasePayload(null, completion));
+  assert.throws(() => releasePayload(producer, null));
+  for (const version of ['0.3.2-next.1', '00.3.2', '65536.0.0', '9007199254740992.0.0']) {
+    assert.throws(() =>
+      releasePayload(
+        { ...producer, version, tag: `v${version}` },
+        { ...completion, version, tag: `v${version}` },
+      ),
+    );
+  }
+});
+
 test('producer receipts follow actual publication and attempt artifacts survive later failure', () => {
   const workflow = readFileSync(
     new URL('../.github/workflows/registry.yml', import.meta.url),
@@ -157,6 +215,35 @@ test('CLI refuses mismatched public integrity without writing completion evidenc
     assert.equal(producer.observation.runAttempt, 1);
     assert.equal(completion.observation.runAttempt, 2);
     assert.equal(completion.integrity, integrity);
+    const payload = JSON.parse(
+      execFileSync(
+        process.execPath,
+        [
+          fileURLToPath(new URL('./release.mjs', import.meta.url)),
+          'payload',
+          join(receipts, 'producer.json'),
+          join(receipts, 'completion.json'),
+        ],
+        { cwd: dir, env: {}, encoding: 'utf8', timeout: 10000 },
+      ),
+    );
+    assert.deepEqual(payload, releasePayload(producer, completion));
+    assert.equal(payload.release.publicationRunAttempt, 1);
+    writeFileSync(join(dir, 'oversized.json'), ' '.repeat(4097));
+    assert.throws(
+      () =>
+        execFileSync(
+          process.execPath,
+          [
+            fileURLToPath(new URL('./release.mjs', import.meta.url)),
+            'payload',
+            join(dir, 'oversized.json'),
+            join(receipts, 'completion.json'),
+          ],
+          { cwd: dir, env: {}, stdio: 'pipe', timeout: 10000 },
+        ),
+      /exceeds 4096 bytes/,
+    );
     assert.throws(() => run('published', integrity, '2'), /EEXIST/);
   } finally {
     rmSync(dir, { recursive: true, force: true });

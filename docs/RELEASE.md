@@ -136,6 +136,41 @@ This source cannot backfill historical receipts. In particular, the existing 0.3
 still lacks authenticated completion archive evidence. No release, retry, dispatch, credential
 connection or consumer activation is authorized by preparing these observations.
 
+## Schema-1 sender preparation (local source; not wired to dispatch)
+
+`node scripts/release-payload.mjs` prepares claims for the agreed schema-1 receiver. It accepts
+no release selector arguments: repository, tag/source, run and completion attempt come from the
+current `GITHUB_*` invocation. Use only the built-in read-only `GH_TOKEN` with Actions read
+permission in a preparation job after npm and MCP Registry success, separate from the App-key
+job. This source does not add or activate that job and does not change held auth PR8.
+
+The selector uses fixed GitHub GET paths for this workflow and current run only. It requires
+complete bounded artifact/job listings, the exact attempt-specific artifact name, fixed numeric
+source repository identity, workflow/tag/source/run identity, successful upload timing and
+artifact API size/SHA256 equality. ZIP files are parsed in memory with the same bounded protocol
+as Company's `infra/mcp/archive-observations.mjs`: only producer/completion JSON, no paths,
+symlinks, encrypted or unsupported compression members, duplicate names/JSON fields or oversized
+members. No archive is extracted or executed. Every included observation is validated.
+
+The current completion receipt and successful npm/readback/registry jobs are mandatory. Exactly
+one producer receipt across this same run's artifacts must match its source and actual archive
+integrity and have a successful publish step. Missing, ambiguous, corrupt, foreign or expired
+evidence refuses. The original producer run/attempt supplies `publicationRunId` and
+`publicationRunAttempt`; later completion never changes either field. No historical receipt is
+invented, no older release is searched and no unsigned provenance is used as a selector.
+
+Output is exactly `client_payload` with `schema:1` and `release` containing only repository,
+tag, commit, package, version, integrity, publicationRunId (string), publicationRunAttempt
+(integer). Only stable versions accepted by Platform v0.96.0 are emitted. A future credentialed
+dispatch step should consume this prepared JSON as data; it must not run the selector or package
+code with an App key. Company independently verifies GitHub, archive bytes, original signed npm
+provenance and registry identity before accepting the claims.
+
+`release.mjs payload producer.json completion.json` is the bounded offline builder interface
+for already-authenticated receipts; file parsing alone does not authenticate their origin. The
+focused tests use fake GitHub responses and real synthetic in-memory ZIPs. No live API/token,
+dispatch, publication, push-triggered CI or merge is part of this local preparation.
+
 ## Consumer automation still to complete
 
 The company runbook is `ayers.repair/docs/RUNBOOK-mcp-release.md`. The tag-driven npm/registry
