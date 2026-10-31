@@ -1,8 +1,32 @@
 // Copyright Ayers Electronics Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
-import { checkPublication, checkSource, checkRegistryRecord, registryVersion } from './release.mjs';
+import {
+  archiveIntegrity,
+  archiveReceipt,
+  checkPublication,
+  checkSource,
+  checkRegistryRecord,
+  registryVersion,
+} from './release.mjs';
+
+const bytes = Buffer.from('synthetic archive bytes');
+const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
+const receiptEnv = {
+  GITHUB_REPOSITORY: 'ayers-software-repair/lancelot',
+  TAG: 'v0.3.2',
+  GITHUB_REF: 'refs/tags/v0.3.2',
+  GITHUB_SHA: 'a'.repeat(40),
+  GITHUB_RUN_ID: '123456',
+  GITHUB_RUN_ATTEMPT: '1',
+};
 
 const pkg = {
   name: '@ayerselectronics/lancelot',
@@ -30,6 +54,113 @@ const source = () => ({
       conclusion: 'success',
     },
   ],
+});
+
+test('receipt integrity comes from exact archive bytes and matching package metadata', () => {
+  const packed = [
+    {
+      name: pkg.name,
+      version: pkg.version,
+      filename: 'ayerselectronics-lancelot-0.3.2.tgz',
+      integrity,
+    },
+  ];
+  assert.equal(archiveIntegrity(packed, pkg, bytes), integrity);
+  assert.throws(() => archiveIntegrity(packed, pkg, Buffer.from('changed archive bytes')));
+  for (const change of [
+    { name: 'other' },
+    { version: '0.3.1' },
+    { filename: '../archive.tgz' },
+    { integrity: 'sha512-other' },
+  ]) {
+    assert.throws(() => archiveIntegrity([{ ...packed[0], ...change }], pkg, bytes));
+  }
+  assert.throws(() => archiveIntegrity([], pkg, bytes));
+});
+
+test('later completion observes its own attempt without replacing the original producer', () => {
+  const producer = archiveReceipt('producer', pkg, integrity, receiptEnv);
+  const completion = archiveReceipt('completion', pkg, integrity, {
+    ...receiptEnv,
+    GITHUB_RUN_ATTEMPT: '2',
+  });
+  assert.deepEqual(producer.observation, { role: 'producer', runId: '123456', runAttempt: 1 });
+  assert.deepEqual(completion.observation, { role: 'completion', runId: '123456', runAttempt: 2 });
+  assert.equal(completion.integrity, producer.integrity);
+  assert.equal(completion.commit, producer.commit);
+  assert.equal(Object.hasOwn(completion, 'producer'), false);
+  for (const change of [
+    { GITHUB_REPOSITORY: 'other/repo' },
+    { TAG: 'v0.3.1' },
+    { GITHUB_REF: 'refs/heads/main' },
+    { GITHUB_SHA: 'wrong' },
+    { GITHUB_RUN_ID: '0' },
+    { GITHUB_RUN_ATTEMPT: '0' },
+    { GITHUB_RUN_ATTEMPT: '1.5' },
+  ])
+    assert.throws(() => archiveReceipt('completion', pkg, integrity, { ...receiptEnv, ...change }));
+  assert.throws(() => archiveReceipt('unknown', pkg, integrity, receiptEnv));
+  assert.throws(() => archiveReceipt('producer', pkg, 'sha512-invalid', receiptEnv));
+});
+
+test('producer receipts follow actual publication and attempt artifacts survive later failure', () => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/registry.yml', import.meta.url),
+    'utf8',
+  );
+  assert.match(workflow, /if: steps\.pack\.outputs\.exists != 'true'/);
+  assert.match(workflow, /npm publish[^\n]+\n          node scripts\/release\.mjs producer/);
+  assert.match(workflow, /Retain archive observations for this attempt\n        if: always\(\)/);
+  assert.match(
+    workflow,
+    /name: lancelot-archive-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+  );
+  assert.match(workflow, /path: \$\{\{ runner\.temp \}\}\/lancelot-archive-receipts\/\*\.json/);
+  assert.doesNotMatch(workflow, /overwrite: true/);
+});
+
+test('CLI refuses mismatched public integrity without writing completion evidence', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lancelot-receipt-'));
+  const receipts = join(dir, 'receipts');
+  const filename = `ayerselectronics-lancelot-${pkg.version}.tgz`;
+  writeFileSync(join(dir, 'package.json'), JSON.stringify(pkg));
+  writeFileSync(join(dir, filename), bytes);
+  writeFileSync(
+    join(dir, 'pack.json'),
+    JSON.stringify([{ name: pkg.name, version: pkg.version, filename, integrity }]),
+  );
+  const run = (mode, publicIntegrity, attempt) =>
+    execFileSync(
+      process.execPath,
+      [
+        '--import',
+        `data:text/javascript,globalThis.fetch=async()=>Response.json(${JSON.stringify({ ...pkg, dist: { integrity: publicIntegrity } })})`,
+        fileURLToPath(new URL('./release.mjs', import.meta.url)),
+        mode,
+        'pack.json',
+      ],
+      {
+        cwd: dir,
+        env: { ...receiptEnv, GITHUB_RUN_ATTEMPT: attempt, RELEASE_RECEIPT_DIR: receipts },
+        stdio: 'pipe',
+        timeout: 10000,
+      },
+    );
+  try {
+    assert.throws(() => run('published', 'sha512-mismatch', '2'), /published archive differs/);
+    assert.equal(existsSync(receipts), false);
+    run('producer', integrity, '1');
+    assert.equal(existsSync(join(receipts, 'completion.json')), false);
+    run('published', integrity, '2');
+    const producer = JSON.parse(readFileSync(join(receipts, 'producer.json')));
+    const completion = JSON.parse(readFileSync(join(receipts, 'completion.json')));
+    assert.equal(producer.observation.runAttempt, 1);
+    assert.equal(completion.observation.runAttempt, 2);
+    assert.equal(completion.integrity, integrity);
+    assert.throws(() => run('published', integrity, '2'), /EEXIST/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('only exact tagged source with successful main CI can publish', () => {

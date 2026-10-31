@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { basename, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export function checkSource({ tag, ref, sha, head, pkg, lock, server, runs }) {
@@ -44,6 +44,43 @@ export function checkPublication(data, pkg, integrity) {
     integrity,
     'published archive differs; never overwrite this version',
   );
+}
+
+export function archiveIntegrity(packed, pkg, bytes) {
+  assert.equal(packed.length, 1, 'one package archive required');
+  const archive = packed[0];
+  assert.equal(archive.name, pkg.name);
+  assert.equal(archive.version, pkg.version);
+  assert.equal(archive.filename, `ayerselectronics-lancelot-${pkg.version}.tgz`);
+  const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
+  assert.equal(archive.integrity, integrity, 'packed archive checksum mismatch');
+  return integrity;
+}
+
+export function archiveReceipt(role, pkg, integrity, env) {
+  assert.ok(role === 'producer' || role === 'completion');
+  assert.equal(pkg.name, '@ayerselectronics/lancelot');
+  assert.equal(env.GITHUB_REPOSITORY, 'ayers-software-repair/lancelot');
+  assert.equal(env.TAG, `v${pkg.version}`);
+  assert.equal(env.GITHUB_REF, `refs/tags/${env.TAG}`);
+  assert.match(env.GITHUB_SHA, /^[a-f0-9]{40}$/);
+  assert.match(env.GITHUB_RUN_ID, /^[1-9][0-9]{0,19}$/);
+  assert.match(env.GITHUB_RUN_ATTEMPT, /^[1-9][0-9]{0,5}$/);
+  assert.match(integrity, /^sha512-[A-Za-z0-9+/]{86}==$/);
+  return {
+    schema: 1,
+    repository: env.GITHUB_REPOSITORY,
+    package: pkg.name,
+    version: pkg.version,
+    tag: env.TAG,
+    commit: env.GITHUB_SHA,
+    integrity,
+    observation: {
+      role,
+      runId: env.GITHUB_RUN_ID,
+      runAttempt: Number(env.GITHUB_RUN_ATTEMPT),
+    },
+  };
 }
 
 export function checkRegistryRecord(record, expected) {
@@ -140,24 +177,34 @@ async function main() {
     return;
   }
   assert.ok(
-    mode === 'inspect' || mode === 'published',
-    'expected source, inspect, published or registry',
+    mode === 'inspect' || mode === 'published' || mode === 'producer',
+    'expected source, inspect, published, producer or registry',
   );
   const packed = json(process.argv[3]);
   assert.equal(packed.length, 1, 'one package archive required');
   const archive = packed[0];
-  assert.equal(archive.name, pkg.name);
-  assert.equal(archive.version, pkg.version);
   assert.equal(basename(archive.filename), archive.filename, 'archive must be in this repository');
-  assert.equal(archive.filename, `ayerselectronics-lancelot-${pkg.version}.tgz`);
-  assert.ok(archive.filename.endsWith('.tgz'));
   const bytes = readFileSync(archive.filename);
-  const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
-  assert.equal(archive.integrity, integrity, 'packed archive checksum mismatch');
+  const integrity = archiveIntegrity(packed, pkg, bytes);
+  const receipt = (role) => {
+    const value = archiveReceipt(role, pkg, integrity, process.env);
+    assert.ok(process.env.RELEASE_RECEIPT_DIR, 'receipt directory required');
+    mkdirSync(process.env.RELEASE_RECEIPT_DIR, { recursive: true });
+    writeFileSync(
+      join(process.env.RELEASE_RECEIPT_DIR, `${role}.json`),
+      JSON.stringify(value, null, 2) + '\n',
+      { flag: 'wx' },
+    );
+  };
+  if (mode === 'producer') {
+    receipt('producer');
+    return;
+  }
   const published = await registryVersion(pkg);
   if (published) checkPublication(published, pkg, integrity);
   if (mode === 'published') {
     assert.ok(published, 'npm has not returned the published version');
+    receipt('completion');
   } else {
     appendFileSync(
       process.env.GITHUB_OUTPUT,

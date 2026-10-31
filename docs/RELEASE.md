@@ -91,6 +91,51 @@ gh run list --workflow registry.yml --limit 5
 `npx vitest run scripts/release.test.mjs --maxWorkers=1` checks the release refusals without authentication,
 publication or a provider call. Hosted `ci.yml` runs it on both supported Node versions.
 
+## Archive observations retained for consumers
+
+The npm job retains artifact `lancelot-archive-RUN_ID-RUN_ATTEMPT` for 90 days using the pinned
+GitHub artifact uploader. It contains only `producer.json` and/or `completion.json` with this
+closed schema (values below are illustrative):
+
+```json
+{
+  "schema": 1,
+  "repository": "ayers-software-repair/lancelot",
+  "package": "@ayerselectronics/lancelot",
+  "version": "X.Y.Z",
+  "tag": "vX.Y.Z",
+  "commit": "40-lowercase-hex-characters",
+  "integrity": "sha512-base64-digest-of-the-actual-packed-bytes",
+  "observation": {
+    "role": "producer",
+    "runId": "positive-decimal-string",
+    "runAttempt": 1
+  }
+}
+```
+
+`producer.json` is written only after `npm publish` succeeds, after rehashing the inspected
+archive. `completion.json` is written only after the rehashed archive agrees with exact-version
+public npm metadata. Its role is `completion`; its invocation is the attempt performing that
+readback. Existing-version retries skip producer creation. Neither role claims the other's
+identity. Files refuse overwrite. The uploader runs even after a later check fails, retaining
+producer evidence when public visibility times out; absent proof produces no receipt.
+
+Consumers must not trust receipt JSON or artifact names by themselves. Use authenticated GitHub
+run/attempt, job/step and artifact API reads to bind the exact repository, reviewed workflow,
+tag/source and invocation; require the appropriate successful publish/readback step and a
+successful overall completion attempt. Select exactly one expected immutable artifact, verify
+the downloaded artifact bytes against its API digest, and reject unexpected files, oversized
+data, missing/duplicate fields or identity/digest mismatches. Join the original producer using
+independently cryptographically verified npm provenance; a later completion never replaces it.
+The original provenance, producer observation and completion observation must agree on archive
+integrity, source and release identity. An expired/missing artifact fails closed. Artifact origin
+checks are the consumer's responsibility; this JSON is not itself a signed provenance statement.
+
+This source cannot backfill historical receipts. In particular, the existing 0.3.3 attempt 2
+still lacks authenticated completion archive evidence. No release, retry, dispatch, credential
+connection or consumer activation is authorized by preparing these observations.
+
 ## Consumer automation still to complete
 
 The company runbook is `ayers.repair/docs/RUNBOOK-mcp-release.md`. The tag-driven npm/registry
