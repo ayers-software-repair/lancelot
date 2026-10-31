@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +26,72 @@ const pkg = { name: '@ayerselectronics/lancelot', version: '0.3.3' };
 const integrity = `sha512-${Buffer.alloc(64, 1).toString('base64')}`;
 const prefix = `repos/${env.GITHUB_REPOSITORY}/actions`;
 const sha256 = (b) => `sha256:${createHash('sha256').update(b).digest('hex')}`;
+
+test('combined workflow gates read-only selection before isolated mandatory App dispatch', () => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/registry.yml', import.meta.url),
+    'utf8',
+  );
+  const [publication, rest] = workflow.split('\n  prepare:\n');
+  const [prepare, dispatch] = rest.split('\n  dispatch:\n');
+  assert.match(publication, /publish:\n    needs: npm/);
+  assert.match(prepare, /^    needs: publish/);
+  assert.match(prepare, /actions: read/);
+  assert.match(prepare, /GH_TOKEN: \$\{\{ github.token \}\}/);
+  assert.match(prepare, /ref: \$\{\{ github.sha \}\}/);
+  assert.match(prepare, /node scripts\/release-payload.mjs/);
+  assert.doesNotMatch(publication + prepare, /RELEASE_APP_PRIVATE_KEY|steps.app.outputs.token/);
+  assert.match(dispatch, /^    needs: prepare/);
+  assert.match(dispatch, /permissions: \{\}/);
+  assert.doesNotMatch(dispatch, /checkout@|node |npm |always\(\)|if:/);
+  assert.match(dispatch, /test "\$CONNECTED" = true/);
+  assert.match(dispatch, /repositories: ayers.repair\n/);
+  assert.match(dispatch, /permission-contents: write/);
+  assert.match(dispatch, /skip-token-revoke: false/);
+  assert.match(dispatch, /RELEASE_PAYLOAD: \$\{\{ needs.prepare.outputs.payload \}\}/);
+  assert.doesNotMatch(workflow, /SITE_DISPATCH_TOKEN|client_payload\[ref\]|continue-on-error/);
+});
+
+test('actual dispatch shell forwards schema1 as JSON data and refuses malformed payload', () => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/registry.yml', import.meta.url),
+    'utf8',
+  );
+  const block = workflow.split('      - name: Dispatch the verified release identity\n')[1];
+  const script = block.split('        run: |\n')[1].replace(/^          /gm, '');
+  const dir = mkdtempSync(join(tmpdir(), 'lancelot-dispatch-shell-'));
+  try {
+    writeFileSync(join(dir, 'gh'), '#!/bin/sh\ntest "$1" = api || exit 99\ncat\n', { mode: 0o700 });
+    const f = fixture();
+    const payload = selectReleasePayload(f.context, f);
+    const run = (value) =>
+      spawnSync('bash', ['-eo', 'pipefail', '-c', script], {
+        env: {
+          PATH: dir + ':/usr/bin:/bin',
+          GH_TOKEN: 'synthetic-company-token',
+          RELEASE_PAYLOAD: value,
+        },
+        encoding: 'utf8',
+        timeout: 5000,
+      });
+    const good = run(JSON.stringify(payload));
+    assert.equal(good.status, 0);
+    assert.deepEqual(JSON.parse(good.stdout), {
+      event_type: 'mcp-release',
+      client_payload: payload,
+    });
+    const bad = run('not JSON');
+    assert.notEqual(bad.status, 0);
+    assert.equal(bad.stdout, '');
+    assert.notEqual(
+      spawnSync('bash', ['-e', '-c', 'test "$CONNECTED" = true'], { env: { CONNECTED: 'false' } })
+        .status,
+      0,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('selector privacy boundary sanitizes decode, API and assertion refusals', () => {
   for (const execute of [

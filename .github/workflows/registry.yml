@@ -94,8 +94,6 @@ jobs:
       TAG: ${{ inputs.tag || github.ref_name }}
       # Pinned as in the registry's GitHub Actions page; raise it deliberately.
       MCP_PUBLISHER_VERSION: v1.8.1
-      # Secrets are not allowed in a step `if`; gate on this boolean.
-      DISPATCH: ${{ secrets.SITE_DISPATCH_TOKEN != '' }}
     steps:
       - name: Checkout at the tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -170,15 +168,61 @@ jobs:
           done
           exit 1
 
-      - name: Redeploy the hosted endpoint
-        if: ${{ env.DISPATCH == 'true' }}
+  prepare:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      payload: ${{ steps.release.outputs.payload }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Select authenticated current-run release receipts
+        id: release
         env:
-          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          gh api repos/ayers-software-repair/ayers.repair/dispatches \
-            -f event_type=mcp-release -f "client_payload[ref]=${TAG}"
-          echo "dispatched mcp-release for ${TAG}"
+          payload="$(node scripts/release-payload.mjs)"
+          printf 'payload=%s\n' "$payload" >> "$GITHUB_OUTPUT"
 
-      - name: Redeploy skipped
-        if: ${{ env.DISPATCH != 'true' }}
-        run: echo "SITE_DISPATCH_TOKEN is not set; the hosted endpoint was not redeployed"
+  dispatch:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require the Release App connection
+        env:
+          CONNECTED: ${{ secrets.RELEASE_APP_PRIVATE_KEY != '' }}
+        run: test "$CONNECTED" = true
+      # No source checkout or package code runs with App credentials.
+      - name: Create company dispatch token
+        id: app
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: '5549557'
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ayers-software-repair
+          repositories: ayers.repair
+          permission-contents: write
+          skip-token-revoke: false
+      - name: Dispatch the verified release identity
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          RELEASE_PAYLOAD: ${{ needs.prepare.outputs.payload }}
+        shell: bash
+        run: |
+          body="$(jq -cn --argjson payload "$RELEASE_PAYLOAD" \
+            '{event_type:"mcp-release",client_payload:$payload}')"
+          printf '%s' "$body" | gh api repos/ayers-software-repair/ayers.repair/dispatches \
+            --method POST --input -

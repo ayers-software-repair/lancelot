@@ -56,8 +56,8 @@ days of creating its configuration, according to [npm's current rules](https://d
 5. Only then does the MCP Registry job publish `server.json` with GitHub OIDC and verify the
    exact server identity, version, npm transport and hosted remote through its exact-version API.
 6. Prepare and push tested marketplace/site adoption. Read back the hosted version separately:
-   `SITE_DISPATCH_TOKEN` still controls the existing optional site dispatch. A logged skip is
-   unfinished deployment, even if registry publication succeeds. Never hand-copy the bucket.
+   the Release App dispatch hands the verified schema-1 identity to Company. Dispatch acceptance
+   alone does not prove deployment. Never hand-copy the bucket.
 7. Refresh directory drafts with the exact artifact and evidence. The owner submits them;
    directory acceptance is separate from submission and source validation.
 
@@ -136,13 +136,14 @@ This source cannot backfill historical receipts. In particular, the existing 0.3
 still lacks authenticated completion archive evidence. No release, retry, dispatch, credential
 connection or consumer activation is authorized by preparing these observations.
 
-## Schema-1 sender preparation (local source; not wired to dispatch)
+## Schema-1 production sender
 
 `node scripts/release-payload.mjs` prepares claims for the agreed schema-1 receiver. It accepts
 no release selector arguments: repository, tag/source, run and completion attempt come from the
 current `GITHUB_*` invocation. Use only the built-in read-only `GH_TOKEN` with Actions read
-permission in a preparation job after npm and MCP Registry success, separate from the App-key
-job. This source does not add or activate that job and does not change held auth PR8.
+permission in the `prepare` job after npm and MCP Registry success, separate from the App-key
+job. That job checks out the immutable source without persisted credentials and executes only
+the standard-library selector; no package install or build runs there.
 
 The selector uses fixed GitHub GET paths for this workflow and current run only. It requires
 complete bounded artifact/job listings, the exact attempt-specific artifact name, fixed numeric
@@ -161,15 +162,21 @@ invented, no older release is searched and no unsigned provenance is used as a s
 
 Output is exactly `client_payload` with `schema:1` and `release` containing only repository,
 tag, commit, package, version, integrity, publicationRunId (string), publicationRunAttempt
-(integer). Only stable versions accepted by Platform v0.96.0 are emitted. A future credentialed
-dispatch step should consume this prepared JSON as data; it must not run the selector or package
-code with an App key. Company independently verifies GitHub, archive bytes, original signed npm
+(integer). Only stable versions accepted by Platform v0.96.0 are emitted. The credentialed
+`dispatch` job consumes this prepared JSON as data without source checkout, selector or package
+execution. Missing `RELEASE_APP_PRIVATE_KEY` fails before token creation; invalid credentials,
+selection or publication failures prevent dispatch. There is no PAT fallback or successful
+skip path. App5549557 requests only `contents: write` on `ayers-software-repair/ayers.repair`.
+Pinned App-token cleanup attempts revocation on job completion, including dispatch failure;
+upstream cleanup warns if deletion fails, so green execution alone is not revocation proof.
+Company independently verifies GitHub, archive bytes, original signed npm
 provenance and registry identity before accepting the claims.
 
 `release.mjs payload producer.json completion.json` is the bounded offline builder interface
 for already-authenticated receipts; file parsing alone does not authenticate their origin. The
-focused tests use fake GitHub responses and real synthetic in-memory ZIPs. No live API/token,
-dispatch, publication, push-triggered CI or merge is part of this local preparation.
+focused tests use fake GitHub responses and real synthetic in-memory ZIPs. Source acceptance is
+separate from credential connection and live release/deployment acceptance. PR8's explicit
+source-merge/activation hold must be resolved against this combined source before integration.
 
 ## Consumer automation still to complete
 
