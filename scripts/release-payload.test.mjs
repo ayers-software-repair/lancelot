@@ -1,8 +1,12 @@
 // Copyright Ayers Electronics Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
 import { archiveReceipt } from './release.mjs';
 import { selectReleasePayload } from './release-payload.mjs';
@@ -22,6 +26,51 @@ const pkg = { name: '@ayerselectronics/lancelot', version: '0.3.3' };
 const integrity = `sha512-${Buffer.alloc(64, 1).toString('base64')}`;
 const prefix = `repos/${env.GITHUB_REPOSITORY}/actions`;
 const sha256 = (b) => `sha256:${createHash('sha256').update(b).digest('hex')}`;
+
+test('selector privacy boundary sanitizes decode, API and assertion refusals', () => {
+  for (const execute of [
+    () => Buffer.from('SECR3T42 not JSON'),
+    () => Buffer.from([0xff]),
+    () => {
+      throw new Error('SECR3T42 private transport error');
+    },
+    () => Buffer.from(JSON.stringify({ id: 123, path: 'SECR3T42 private path' })),
+  ]) {
+    assert.throws(
+      () => selectReleasePayload(env, { execute }),
+      (error) => {
+        assert.equal(error.message, 'Release payload preparation refused');
+        assert.equal(Object.hasOwn(error, 'cause'), false);
+        assert.doesNotMatch(error.stack, /SECR3T42|private path|private transport/);
+        return true;
+      },
+    );
+  }
+});
+
+test('selector CLI privacy refusal has fixed stderr and no payload', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lancelot-selector-privacy-'));
+  try {
+    mkdirSync(join(dir, 'bin'));
+    writeFileSync(join(dir, 'bin/gh'), '#!/bin/sh\nprintf "%s" "SECR3T42 not JSON"\n', {
+      mode: 0o700,
+    });
+    const result = spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL('./release-payload.mjs', import.meta.url))],
+      {
+        env: { ...env, PATH: join(dir, 'bin') + ':/usr/bin:/bin' },
+        encoding: 'utf8',
+        timeout: 5000,
+      },
+    );
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, 'Release payload preparation refused\n');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 const zip = (files) =>
   execFileSync(
     'python3',

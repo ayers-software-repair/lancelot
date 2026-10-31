@@ -42,7 +42,15 @@ with zipfile.ZipFile(io.BytesIO(data)) as z:
 `;
 
 /** Read-only claims preparation. The receiver independently verifies provenance and all claims. */
-export function selectReleasePayload(env, { execute = execFileSync } = {}) {
+export function selectReleasePayload(env, options) {
+  try {
+    return collectReleasePayload(env, options);
+  } catch {
+    throw new Error('Release payload preparation refused');
+  }
+}
+
+function collectReleasePayload(env, { execute = execFileSync } = {}) {
   assert.equal(env.GITHUB_REPOSITORY, repository);
   assert.equal(env.GITHUB_EVENT_NAME, 'push');
   assert.match(env.GITHUB_SHA, /^[a-f0-9]{40}$/);
@@ -261,8 +269,8 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
       'no release selectors accepted; use the current GitHub invocation',
     );
     process.stdout.write(JSON.stringify(selectReleasePayload(process.env)) + '\n');
-  } catch (error) {
-    console.error(error.message);
+  } catch {
+    console.error('Release payload preparation refused');
     process.exitCode = 1;
   }
 }
