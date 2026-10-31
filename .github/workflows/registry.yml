@@ -80,8 +80,6 @@ jobs:
       TAG: ${{ inputs.tag || github.ref_name }}
       # Pinned as in the registry's GitHub Actions page; raise it deliberately.
       MCP_PUBLISHER_VERSION: v1.8.1
-      # Secrets are not allowed in a step `if`; gate on this boolean.
-      DISPATCH: ${{ secrets.SITE_DISPATCH_TOKEN != '' }}
     steps:
       - name: Checkout at the tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -156,15 +154,37 @@ jobs:
           done
           exit 1
 
-      - name: Redeploy the hosted endpoint
+  dispatch:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      DISPATCH: ${{ secrets.RELEASE_APP_PRIVATE_KEY != '' }}
+    steps:
+      # Keep package code and downloaded publisher tools away from App credentials.
+      - name: Create company dispatch token
+        if: ${{ env.DISPATCH == 'true' }}
+        id: app
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: '5549557'
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ayers-software-repair
+          repositories: ayers.repair
+          permission-contents: write
+          skip-token-revoke: false
+
+      - name: Dispatch the hosted release
         if: ${{ env.DISPATCH == 'true' }}
         env:
-          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           gh api repos/ayers-software-repair/ayers.repair/dispatches \
             -f event_type=mcp-release -f "client_payload[ref]=${TAG}"
           echo "dispatched mcp-release for ${TAG}"
 
-      - name: Redeploy skipped
+      - name: Dispatch skipped
         if: ${{ env.DISPATCH != 'true' }}
-        run: echo "SITE_DISPATCH_TOKEN is not set; the hosted endpoint was not redeployed"
+        run: echo "RELEASE_APP_PRIVATE_KEY is not set; the hosted release was not dispatched"

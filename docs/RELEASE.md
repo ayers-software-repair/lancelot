@@ -56,7 +56,7 @@ days of creating its configuration, according to [npm's current rules](https://d
 5. Only then does the MCP Registry job publish `server.json` with GitHub OIDC and verify the
    exact server identity, version, npm transport and hosted remote through its exact-version API.
 6. Prepare and push tested marketplace/site adoption. Read back the hosted version separately:
-   `SITE_DISPATCH_TOKEN` still controls the existing optional site dispatch. A logged skip is
+   `RELEASE_APP_PRIVATE_KEY` controls the optional company Release App dispatch. A logged skip is
    unfinished deployment, even if registry publication succeeds. Never hand-copy the bucket.
 7. Refresh directory drafts with the exact artifact and evidence. The owner submits them;
    directory acceptance is separate from submission and source validation.
@@ -94,8 +94,20 @@ publication or a provider call. Hosted `ci.yml` runs it on both supported Node v
 ## Consumer automation still to complete
 
 The company runbook is `ayers.repair/docs/RUNBOOK-mcp-release.md`. The tag-driven npm/registry
-source does not replace the missing scoped company release/adoption App. Its account setup
-and permissions remain owner-operated. Consumer changes must use the shared generators and
+source uses Release App `5549557` for the existing `mcp-release` event with `{ref: TAG}`.
+After npm and MCP Registry verification succeed, a separate job with no checkout or package
+execution requests a short-lived token restricted to `ayers-software-repair/ayers.repair`
+with `contents: write`. The pinned App-token action revokes it when the job ends, including
+when dispatch fails. No token or key is supplied to package/build or registry jobs. Missing
+`RELEASE_APP_PRIVATE_KEY` logs a skip; a configured but invalid credential fails the dispatch
+job, and failed/skipped publication prevents that job from running. There is no PAT fallback.
+
+Activation is held pending owner-operated credential connection and company receiver acceptance.
+This source change neither connects the key nor authorizes a token mint, dispatch, historical
+workflow retry, release or deployment. The App installation currently covers company and
+Marketplace; the token request explicitly selects company only. The later schema-1 receiver
+migration remains separate. A successful dispatch response is not hosted acceptance.
+Consumer changes must use the shared generators and
 verify the exact published identity/integrity before existing deployment workflows run.
 A website push must not generate a package version or release tag.
 

@@ -1,8 +1,41 @@
 // Copyright Ayers Electronics Inc. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'vitest';
 import { checkPublication, checkSource, checkRegistryRecord, registryVersion } from './release.mjs';
+
+const workflow = readFileSync(new URL('../.github/workflows/registry.yml', import.meta.url), 'utf8');
+
+test('company credentials are isolated after successful npm and registry publication', () => {
+  const [publication, dispatch] = workflow.split('\n  dispatch:\n');
+  assert.ok(dispatch, 'isolated dispatch job required');
+  assert.match(publication, /publish:\n    needs: npm\n/);
+  assert.match(dispatch, /^    needs: publish\n/);
+  assert.match(dispatch, /    permissions: \{\}/);
+  assert.doesNotMatch(publication, /RELEASE_APP_PRIVATE_KEY|SITE_DISPATCH_TOKEN/);
+  assert.doesNotMatch(dispatch, /checkout@|npm |node |curl |always\(\)/);
+  assert.match(dispatch, /repositories: ayers\.repair\n/);
+  assert.match(dispatch, /permission-contents: write\n/);
+  assert.match(dispatch, /skip-token-revoke: false\n/);
+  assert.match(dispatch, /app-id: '5549557'/);
+  assert.match(dispatch, /create-github-app-token@[a-f0-9]{40}/);
+});
+
+test('absent App credentials skip mint and dispatch without a PAT fallback', () => {
+  const dispatch = workflow.split('\n  dispatch:\n')[1];
+  assert.match(dispatch, /DISPATCH: \$\{\{ secrets\.RELEASE_APP_PRIVATE_KEY != '' \}\}/);
+  const steps = dispatch.split(/\n      - name: /).slice(1);
+  assert.equal(steps.length, 3);
+  for (const step of steps.slice(0, 2)) {
+    assert.match(step, /if: \$\{\{ env\.DISPATCH == 'true' \}\}/);
+  }
+  assert.match(steps[1], /GH_TOKEN: \$\{\{ steps\.app\.outputs\.token \}\}/);
+  assert.match(steps[1], /event_type=mcp-release -f "client_payload\[ref\]=\$\{TAG\}"/);
+  assert.match(steps[2], /if: \$\{\{ env\.DISPATCH != 'true' \}\}/);
+  assert.match(steps[2], /hosted release was not dispatched/);
+  assert.doesNotMatch(workflow, /SITE_DISPATCH_TOKEN|continue-on-error/);
+});
 
 const pkg = {
   name: '@ayerselectronics/lancelot',
